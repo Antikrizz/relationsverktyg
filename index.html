@@ -1205,15 +1205,27 @@ async function goAnalys() {
     return
   }
 
-  // Hämta poäng för radardiagram
-  const { data: entries } = await supabase
+  // Hämta alla entries för radar + trenddiagram
+  const { data: allEntries } = await supabase
     .from('entries')
-    .select('partner, scores')
+    .select('partner, scores, week_num')
     .eq('room_id', state.room_id)
-    .eq('week_num', WEEK_NUM)
+    .order('week_num', { ascending: true })
 
-  const e1 = entries?.find(e => e.partner === 'p1')
-  const e2 = entries?.find(e => e.partner === 'p2')
+  const entries = allEntries || []
+  const e1 = entries.find(e => e.partner === 'p1' && e.week_num === WEEK_NUM)
+  const e2 = entries.find(e => e.partner === 'p2' && e.week_num === WEEK_NUM)
+
+  // Bygg trenddata — snitt per vecka per partner
+  const weekMap = {}
+  for (const e of entries) {
+    if (!weekMap[e.week_num]) weekMap[e.week_num] = {}
+    weekMap[e.week_num][e.partner] = e.scores.reduce((a, b) => a + b, 0) / 8
+  }
+  const sortedWeeks = Object.keys(weekMap).map(Number).sort((a, b) => a - b)
+  const trendLabels = sortedWeeks.map(w => `V${w % 100}`)
+  const trend1 = sortedWeeks.map(w => weekMap[w].p1 != null ? +weekMap[w].p1.toFixed(2) : null)
+  const trend2 = sortedWeeks.map(w => weekMap[w].p2 != null ? +weekMap[w].p2.toFixed(2) : null)
 
   document.getElementById('analysContent').innerHTML = `
     <div class="card">
@@ -1222,6 +1234,15 @@ async function goAnalys() {
       <div style="display:flex;gap:20px;justify-content:center;margin-top:8px;font-size:13px;color:var(--text-muted);">
         <span style="color:#2d5a4e;font-weight:600;">— ${state.p1_name}</span>
         <span style="color:#e8956e;font-weight:600;">— ${state.p2_name}</span>
+      </div>
+    </div>
+
+    <div class="card" id="trendCard" style="display:none;">
+      <div class="card-title">Trend över tid</div>
+      <div class="radar-wrap"><canvas id="trendChart"></canvas></div>
+      <div style="display:flex;gap:20px;justify-content:center;margin-top:8px;font-size:13px;color:var(--text-muted);">
+        <span style="color:var(--primary);font-weight:600;">— ${state.p1_name}</span>
+        <span style="color:var(--accent);font-weight:600;">— ${state.p2_name}</span>
       </div>
     </div>
 
@@ -1248,14 +1269,16 @@ async function goAnalys() {
     <div style="height:20px;"></div>
   `
 
-  // Bygg radardiagram
+  // Bygg diagram
   if (e1 && e2) {
     try {
       const mod = await import('https://esm.sh/chart.js@4/auto')
       const Chart = mod.default
-      const ctx = document.getElementById('radarChart').getContext('2d')
+
+      // Radardiagram — denna vecka
+      const radarCtx = document.getElementById('radarChart').getContext('2d')
       if (analysChart) { analysChart.destroy(); analysChart = null }
-      analysChart = new Chart(ctx, {
+      analysChart = new Chart(radarCtx, {
         type: 'radar',
         data: {
           labels: DIMS_SHORT,
@@ -1263,17 +1286,17 @@ async function goAnalys() {
             {
               label: state.p1_name,
               data: e1.scores,
-              borderColor: '#2d5a4e',
-              backgroundColor: 'rgba(45,90,78,0.12)',
-              pointBackgroundColor: '#2d5a4e',
+              borderColor: getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
+              backgroundColor: 'rgba(196,104,126,0.12)',
+              pointBackgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
               borderWidth: 2,
             },
             {
               label: state.p2_name,
               data: e2.scores,
-              borderColor: '#e8956e',
+              borderColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
               backgroundColor: 'rgba(232,149,110,0.12)',
-              pointBackgroundColor: '#e8956e',
+              pointBackgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
               borderWidth: 2,
             }
           ]
@@ -1281,15 +1304,53 @@ async function goAnalys() {
         options: {
           responsive: true,
           plugins: { legend: { display: false } },
-          scales: {
-            r: {
-              min: 0, max: 5,
-              ticks: { stepSize: 1, font: { size: 10 } },
-              pointLabels: { font: { size: 11 } },
-            }
-          }
+          scales: { r: { min: 0, max: 5, ticks: { stepSize: 1, font: { size: 10 } }, pointLabels: { font: { size: 11 } } } }
         }
       })
+
+      // Trenddiagram — snitt per vecka (visas bara om mer än en vecka finns)
+      if (sortedWeeks.length > 1) {
+        document.getElementById('trendCard').style.display = 'block'
+        const trendCtx = document.getElementById('trendChart').getContext('2d')
+        new Chart(trendCtx, {
+          type: 'line',
+          data: {
+            labels: trendLabels,
+            datasets: [
+              {
+                label: state.p1_name,
+                data: trend1,
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
+                backgroundColor: 'rgba(196,104,126,0.08)',
+                pointBackgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                spanGaps: true,
+              },
+              {
+                label: state.p2_name,
+                data: trend2,
+                borderColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+                backgroundColor: 'rgba(232,149,110,0.08)',
+                pointBackgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                spanGaps: true,
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { min: 1, max: 5, ticks: { stepSize: 1, font: { size: 10 } } },
+              x: { ticks: { font: { size: 11 } } }
+            }
+          }
+        })
+      }
     } catch(err) {
       console.warn('Chart.js-fel:', err)
     }
