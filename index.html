@@ -6,33 +6,36 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Relationer">
-<meta name="theme-color" content="#2d5a4e">
+<meta name="theme-color" content="#8b5467">
 <title>Relationsverktyg</title>
 <link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
 <style>
 /* ===== DESIGNSYSTEM ===== */
 :root {
-  --bg: #faf9f7;
-  --card: #ffffff;
-  --primary: #2d5a4e;
-  --primary-light: #3d7a6a;
-  --accent: #e8956e;
-  --text: #1c1c1e;
-  --text-muted: #6b7280;
-  --border: #e5e0d8;
-  --success: #16a34a;
-  --radius: 14px;
+  --bg: #fff0f5;
+  --card: #fff8fb;
+  --primary: #d4849a;
+  --primary-light: #e0a0b4;
+  --accent: #e8a882;
+  --text: #7a5040;
+  --text-muted: #b09080;
+  --border: #f5dde6;
+  --success: #5a8a69;
+  --radius: 16px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; overflow: hidden; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Lora', Georgia, serif;
   background: var(--bg);
   color: var(--text);
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 /* ===== APP-LAYOUT ===== */
@@ -53,7 +56,7 @@ body {
   gap: 10px;
 }
 .header-texts { flex: 1; }
-.header-title { font-size: 17px; font-weight: 600; }
+.header-title { font-size: 20px; font-weight: 700; font-family: 'Dancing Script', cursive; }
 .header-sub { font-size: 12px; opacity: 0.75; margin-top: 1px; min-height: 16px; }
 .scroll-body {
   flex: 1;
@@ -76,12 +79,11 @@ body {
   box-shadow: 0 1px 8px rgba(0,0,0,0.06);
 }
 .card-title {
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 700;
+  font-family: 'Dancing Script', cursive;
   color: var(--primary);
   margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
 }
 
 /* ===== KNAPPAR ===== */
@@ -193,7 +195,7 @@ textarea { resize: none; min-height: 90px; }
 
 /* ===== PÅMINNELSEBANNER ===== */
 .reminder-banner {
-  background: linear-gradient(135deg, #2d5a4e, #3d7a6a);
+  background: linear-gradient(135deg, var(--primary), #a85070);
   color: white;
   border-radius: var(--radius);
   padding: 20px;
@@ -201,7 +203,7 @@ textarea { resize: none; min-height: 90px; }
   text-align: center;
 }
 .reminder-emoji { font-size: 36px; margin-bottom: 8px; }
-.reminder-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.reminder-title { font-size: 24px; font-weight: 700; font-family: 'Dancing Script', cursive; margin-bottom: 4px; }
 .reminder-sub { font-size: 14px; opacity: 0.85; }
 
 /* ===== STATUSRAD ===== */
@@ -335,19 +337,19 @@ textarea { resize: none; min-height: 90px; }
 
 /* ===== BEKRÄFTELSE ===== */
 .done-card {
-  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-  border: 1px solid #86efac;
+  background: linear-gradient(135deg, #fdeef3, #fad8e5);
+  border: 1px solid #f0b8cb;
   border-radius: var(--radius);
   padding: 32px 20px;
   text-align: center;
 }
 .done-icon { font-size: 56px; margin-bottom: 12px; }
-.done-title { font-size: 22px; font-weight: 700; color: #15803d; margin-bottom: 8px; }
-.done-sub { font-size: 15px; color: #166534; line-height: 1.6; }
+.done-title { font-size: 28px; font-weight: 700; font-family: 'Dancing Script', cursive; color: var(--primary); margin-bottom: 8px; }
+.done-sub { font-size: 15px; color: #a85070; line-height: 1.6; }
 
 /* ===== INTRO-HERO ===== */
 .intro-hero {
-  background: linear-gradient(135deg, var(--primary), #1a3d35);
+  background: linear-gradient(135deg, var(--primary), #a85070);
   color: white;
   border-radius: var(--radius);
   padding: 28px 22px;
@@ -355,7 +357,7 @@ textarea { resize: none; min-height: 90px; }
   text-align: center;
 }
 .intro-hero-icon { font-size: 48px; margin-bottom: 12px; }
-.intro-hero-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.intro-hero-title { font-size: 28px; font-weight: 700; font-family: 'Dancing Script', cursive; margin-bottom: 6px; }
 .intro-hero-sub { font-size: 14px; opacity: 0.85; line-height: 1.6; }
 
 /* ===== RUMSKOD-VISNING ===== */
@@ -460,7 +462,7 @@ textarea { resize: none; min-height: 90px; }
   <!-- HUVUD-HEADER (synlig alltid) -->
   <div class="header">
     <div class="header-texts">
-      <div class="header-title" id="hTitle">💚 Relationsverktyg</div>
+      <div class="header-title" id="hTitle">🩷 Relationsverktyg</div>
       <div class="header-sub" id="hSub">Veckolig incheckning</div>
     </div>
   </div>
@@ -476,7 +478,7 @@ textarea { resize: none; min-height: 90px; }
     <!-- ===================== ONBOARDING: RUMSKOD ===================== -->
     <div class="screen active" id="s-code">
       <div class="intro-hero">
-        <div class="intro-hero-icon">💚</div>
+        <div class="intro-hero-icon">🩷</div>
         <div class="intro-hero-title">Välkommen</div>
         <div class="intro-hero-sub">Ert gemensamma rum ger er en privat plats att checka in varje vecka.</div>
       </div>
@@ -673,7 +675,7 @@ async function joinRoom() {
     state = { room_id: data.id, room_code: data.code, p1_name: data.p1_name, p2_name: data.p2_name, partner: null }
     renderWhoScreen()
     showScreen('who')
-    setHeader('💚 Välkommen', data.p1_name + ' & ' + data.p2_name)
+    setHeader('🩷 Välkommen', data.p1_name + ' & ' + data.p2_name)
   } catch(e) {
     toast('Nätverksfel — kontrollera uppkoppling och försök igen')
   } finally {
@@ -723,7 +725,7 @@ async function createRoom() {
     state = { room_id: data.id, room_code: data.code, p1_name: data.p1_name, p2_name: data.p2_name, partner: null }
     renderWhoScreen()
     showScreen('who')
-    setHeader('💚 Välkommen', data.p1_name + ' & ' + data.p2_name)
+    setHeader('🩷 Välkommen', data.p1_name + ' & ' + data.p2_name)
   } catch(e) {
     toast('Nätverksfel — kontrollera uppkoppling och försök igen')
     btn.innerHTML = 'Skapa rum →'
@@ -767,12 +769,12 @@ async function boot() {
 // ============================================================
 async function goHome() {
   showScreen('home')
-  setHeader('💚 Relationsverktyg', 'Veckolig incheckning')
+  setHeader('🩷 Relationsverktyg', 'Veckolig incheckning')
 
   // Visa laddningsindikator medan Supabase-data hämtas
   document.getElementById('homeContent').innerHTML = `
     <div style="text-align:center;padding:40px;color:var(--text-muted);">
-      <div class="spinner" style="border-color:rgba(45,90,78,0.3);border-top-color:var(--primary);width:28px;height:28px;margin:0 auto 12px;display:block;"></div>
+      <div class="spinner" style="border-color:rgba(139,84,103,0.2);border-top-color:var(--primary);width:28px;height:28px;margin:0 auto 12px;display:block;"></div>
       <p>Hämtar veckostatus...</p>
     </div>
   `
@@ -856,9 +858,9 @@ function renderHome() {
 
   // Åtgärdskort
   if (myDone) {
-    h += `<div class="card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-color:#86efac;">
-      <div class="card-title" style="color:#15803d;">Din vecka är klar ✓</div>
-      <p style="font-size:14px;color:#166534;margin-bottom:${partnerDone?'0':'14px'};">${
+    h += `<div class="card" style="background:linear-gradient(135deg,#fdeef3,#fad8e5);border-color:#f0b8cb;">
+      <div class="card-title" style="color:var(--primary);">Din vecka är klar ✓</div>
+      <p style="font-size:14px;color:#a85070;margin-bottom:${partnerDone?'0':'14px'};">${
         partnerDone
           ? `Båda klara! 🎉 Gå till <strong>Analys</strong>-fliken för radardiagram och AI-råd.`
           : `Väntar på ${otherName}. Skicka påminnelse om du vill.`
@@ -1164,7 +1166,7 @@ window.leaveRoom = function() {
     document.getElementById('mainNav').style.display = 'none'
     document.getElementById('codeInput').value = ''
     showScreen('code')
-    setHeader('💚 Relationsverktyg', 'Veckolig incheckning')
+    setHeader('🩷 Relationsverktyg', 'Veckolig incheckning')
     toast('Du har lämnat rummet')
   }
 }
@@ -1227,7 +1229,7 @@ async function goAnalys() {
       <div class="card-title">AI-råd</div>
       <div id="analysText" class="analys-text">
         <div class="analys-loading">
-          <div class="spinner" style="border-color:rgba(45,90,78,0.3);border-top-color:var(--primary);width:28px;height:28px;margin:0 auto 12px;display:block;"></div>
+          <div class="spinner" style="border-color:rgba(139,84,103,0.2);border-top-color:var(--primary);width:28px;height:28px;margin:0 auto 12px;display:block;"></div>
           <p style="color:var(--text-muted);">Analyserar veckans data...</p>
         </div>
       </div>
@@ -1443,11 +1445,11 @@ if (state && state.room_id && state.partner) {
   // Halvvägs onboardad — visa partnerval
   renderWhoScreen()
   showScreen('who')
-  setHeader('💚 Välkommen', state.p1_name + ' & ' + state.p2_name)
+  setHeader('🩷 Välkommen', state.p1_name + ' & ' + state.p2_name)
 } else {
   // Ny användare — visa rumskodsskärm
   showScreen('code')
-  setHeader('💚 Relationsverktyg', 'Veckolig incheckning')
+  setHeader('🩷 Relationsverktyg', 'Veckolig incheckning')
 }
 </script>
 </body>
