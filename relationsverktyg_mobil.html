@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Relationer">
+<meta name="theme-color" content="#2d5a4e">
+<title>Relationsverktyg</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #faf9f7;
+  --card: #ffffff;
+  --primary: #2d5a4e;
+  --primary-light: #3d7a6a;
+  --accent: #e8956e;
+  --text: #1c1c1e;
+  --text-muted: #6b7280;
+  --border: #e5e0d8;
+  --success: #16a34a;
+  --radius: 14px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 430px;
+  margin: 0 auto;
+}
+.header {
+  background: var(--primary);
+  color: white;
+  padding: calc(var(--safe-top) + 14px) 20px 14px;
+  flex-shrink: 0;
+}
+.header-title { font-size: 17px; font-weight: 600; }
+.header-sub { font-size: 12px; opacity: 0.75; margin-top: 1px; min-height: 16px; }
+.scroll-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 18px 18px calc(var(--safe-bottom) + 90px);
+}
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* CARDS */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* BUTTONS */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 15px 20px;
+  border-radius: var(--radius);
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s;
+  margin-bottom: 10px;
+  font-family: inherit;
+  -webkit-appearance: none;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:active { background: var(--primary-light); transform: scale(0.98); }
+.btn-secondary { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+.btn-secondary:active { background: rgba(45,90,78,0.08); }
+.btn-accent { background: var(--accent); color: white; }
+.btn-accent:active { opacity: 0.85; transform: scale(0.98); }
+.btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); font-weight: 400; }
+.btn:disabled { opacity: 0.4; }
+
+/* INPUTS */
+input, textarea, select {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 16px;
+  font-family: inherit;
+  background: white;
+  color: var(--text);
+  outline: none;
+  -webkit-appearance: none;
+}
+input:focus, textarea:focus { border-color: var(--primary); }
+textarea { resize: none; min-height: 90px; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 14px 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.form-label:first-child { margin-top: 0; }
+
+/* SCALE */
+.scale-row {
+  display: flex;
+  gap: 7px;
+  margin: 10px 0 4px;
+}
+.scale-btn {
+  flex: 1;
+  height: 50px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: white;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.1s;
+  font-family: inherit;
+  -webkit-appearance: none;
+}
+.scale-btn.sel {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+.scale-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+/* QUESTION CARD */
+.q-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.q-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.q-text { font-size: 15px; line-height: 1.45; margin-bottom: 4px; }
+.q-ctx { font-size: 12px; color: var(--text-muted); font-style: italic; margin-bottom: 8px; }
+
+/* REMINDER BANNER */
+.reminder-banner {
+  background: linear-gradient(135deg, #2d5a4e, #3d7a6a);
+  color: white;
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.reminder-emoji { font-size: 36px; margin-bottom: 8px; }
+.reminder-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.reminder-sub { font-size: 14px; opacity: 0.85; }
+
+/* STATUS */
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  background: var(--bg);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+.dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.dot-on { background: var(--success); }
+.dot-off { background: #d1d5db; }
+.status-name { font-weight: 600; font-size: 15px; }
+.status-info { font-size: 13px; color: var(--text-muted); }
+
+/* WEEK BADGE */
+.week-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--primary);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+/* SYNC CODE */
+.sync-box {
+  background: #f8fafc;
+  border: 1.5px solid var(--primary);
+  border-radius: 10px;
+  padding: 14px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  word-break: break-all;
+  color: var(--primary);
+  margin: 12px 0;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.copy-status {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--success);
+  margin-top: 6px;
+  min-height: 20px;
+}
+
+/* PROGRESS */
+.prog-wrap { background: var(--border); border-radius: 4px; height: 6px; margin: 8px 0 4px; }
+.prog-fill { height: 6px; border-radius: 4px; background: var(--primary); transition: width 0.3s; }
+.prog-label { font-size: 12px; color: var(--text-muted); text-align: right; }
+
+/* NAV */
+.nav-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 430px;
+  margin: 0 auto;
+  background: white;
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding: 8px 0 calc(var(--safe-bottom) + 8px);
+}
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+}
+.nav-btn svg { width: 22px; height: 22px; }
+.nav-btn.active { color: var(--primary); }
+
+/* TOAST */
+.toast {
+  position: fixed;
+  bottom: calc(var(--safe-bottom) + 90px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1c1c1e;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; }
+
+/* SETUP PARTNER BTNS */
+.partner-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+.partner-btn {
+  padding: 20px;
+  border-radius: var(--radius);
+  border: 2px solid var(--border);
+  background: white;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: all 0.12s;
+}
+.partner-btn:active { transform: scale(0.98); }
+.partner-btn.p1 { border-color: var(--primary); }
+.partner-btn.p2 { border-color: var(--accent); }
+.partner-btn-name { font-size: 19px; font-weight: 700; margin-bottom: 2px; }
+.partner-btn-sub { font-size: 13px; color: var(--text-muted); }
+.partner-btn.p1 .partner-btn-name { color: var(--primary); }
+.partner-btn.p2 .partner-btn-name { color: var(--accent); }
+
+/* FEEDBACK BLOCK */
+.fb-block {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 13px;
+  margin-bottom: 8px;
+  border-left: 3px solid var(--accent);
+}
+.fb-label { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 5px; }
+
+/* DONE STATE */
+.done-card {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1px solid #86efac;
+  border-radius: var(--radius);
+  padding: 28px 20px;
+  text-align: center;
+}
+.done-icon { font-size: 48px; margin-bottom: 12px; }
+.done-title { font-size: 20px; font-weight: 700; color: #15803d; margin-bottom: 6px; }
+.done-sub { font-size: 14px; color: #166534; line-height: 1.5; }
+
+/* INTRO */
+.intro-hero {
+  background: linear-gradient(135deg, var(--primary), #1a3d35);
+  color: white;
+  border-radius: var(--radius);
+  padding: 28px 22px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.intro-hero-icon { font-size: 48px; margin-bottom: 12px; }
+.intro-hero-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.intro-hero-sub { font-size: 14px; opacity: 0.85; line-height: 1.6; }
+
+h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+p { line-height: 1.6; }
+
+/* IMPORT SCREEN */
+.import-area {
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin: 10px 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-title" id="hTitle">💚 Relationsverktyg</div>
+    <div class="header-sub" id="hSub">Veckolig incheckning</div>
+  </div>
+  <div class="scroll-body">
+
+    <!-- SETUP -->
+    <div class="screen active" id="s-setup">
+      <div class="intro-hero">
+        <div class="intro-hero-icon">💚</div>
+        <div class="intro-hero-title">Välkommen</div>
+        <div class="intro-hero-sub">Fyll i veckans frågor, dela din synkkod med partnern — och öppna er Cowork-tavla för analys.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Ange era namn</div>
+        <div class="form-label">Partner 1</div>
+        <input type="text" id="sp1" placeholder="T.ex. Kristian" autocomplete="off">
+        <div class="form-label">Partner 2</div>
+        <input type="text" id="sp2" placeholder="T.ex. Elisabet" autocomplete="off">
+      </div>
+      <button class="btn btn-primary" onclick="doSetup()">Kom igång →</button>
+    </div>
+
+    <!-- HOME -->
+    <div class="screen" id="s-home">
+      <div id="home-content"></div>
+    </div>
+
+    <!-- WHO AM I -->
+    <div class="screen" id="s-who">
+      <div class="card">
+        <div class="card-title">Vem är du nu?</div>
+        <div class="partner-choice" id="partner-choices"></div>
+      </div>
+    </div>
+
+    <!-- SURVEY -->
+    <div class="screen" id="s-survey">
+      <div id="survey-content"></div>
+    </div>
+
+    <!-- SYNC CODE -->
+    <div class="screen" id="s-sync">
+      <div id="sync-content"></div>
+    </div>
+
+    <!-- IMPORT -->
+    <div class="screen" id="s-import">
+      <div id="import-content"></div>
+    </div>
+
+  </div><!-- scroll-body -->
+</div><!-- app -->
+
+<!-- NAV -->
+<nav class="nav-bottom" id="main-nav" style="display:none;">
+  <button class="nav-btn active" id="nb-home" onclick="go('home')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Hem
+  </button>
+  <button class="nav-btn" id="nb-survey" onclick="goSurvey()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Fyll i
+  </button>
+  <button class="nav-btn" id="nb-sync" onclick="go('sync')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+    Dela
+  </button>
+  <button class="nav-btn" id="nb-import" onclick="go('import')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+    Importera
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const SK = 'rv_mobil_v1';
+
+const QS = [
+  { t: 'Hur ofta vände sig den andra mot dig när du sökte kontakt — en kommentar, tanke, känsla, blick?', c: 'Gottman: Turning toward' },
+  { t: 'Hur ofta tog din partner självmant initiativ till att fråga hur du mår eller tänker?', c: 'Aktiv nyfikenhet' },
+  { t: 'När det blev spänt — hur ofta försökte någon reparera (be om ursäkt, mjukna, ta ett steg)?', c: 'Gottmans viktigaste skyddsfaktor' },
+  { t: 'Hur ofta startade svåra samtal mjukt, utan kritik eller försvar direkt?', c: 'Gottman: Soft start-up' },
+  { t: 'Hur ofta hade ni fysisk närhet eller beröring utan agenda?', c: 'Trygg anknytning' },
+  { t: 'Hur ofta hade ni ett emotionellt nära samtal där ingen behövde lösa något?', c: 'EFT: Emotionell tillgänglighet' },
+  { t: 'Hur ofta vågade du visa sårbarhet utan att förvänta dig kritik eller att den andra skulle "fixa"?', c: 'Emotionell intimitet' },
+  { t: 'Hur ofta upplevde du att ni jobbade med vardagen som ett team snarare än som separata uppgifter?', c: 'Gottman: Shared meaning' }
+];
+
+const FB = [
+  { k: 'a', l: '💛 En sak jag uppskattade hos dig...', ph: 'Berätta vad du sett och värdesatt.' },
+  { k: 'm', l: '🌱 En sak jag skulle önska mer av...', ph: 'Formulera som en önskan, inte kritik.' },
+  { k: 'i', l: '🔍 En insikt om mig själv...', ph: 'Vad har du sett hos dig själv?' }
+];
+
+let S = { setup: null, weeks: {}, week: 1, user: null, ans: {} };
+
+function load() {
+  try { const r = localStorage.getItem(SK); if (r) Object.assign(S, JSON.parse(r)); } catch(e) {}
+}
+function save() {
+  try { localStorage.setItem(SK, JSON.stringify({ setup: S.setup, weeks: S.weeks, week: S.week })); } catch(e) {}
+}
+
+load();
+
+// ============================================================
+// BOOT
+// ============================================================
+if (!S.setup) {
+  showScreen('setup');
+} else {
+  boot();
+}
+
+function boot() {
+  document.getElementById('main-nav').style.display = 'flex';
+  if (!S.weeks[S.week]) {
+    S.weeks[S.week] = { n: S.week, d: today(), p1: null, p2: null };
+    save();
+  }
+  go('home');
+}
+
+function today() { return new Date().toISOString().split('T')[0]; }
+
+// ============================================================
+// SETUP
+// ============================================================
+function doSetup() {
+  const p1 = document.getElementById('sp1').value.trim();
+  const p2 = document.getElementById('sp2').value.trim();
+  if (!p1 || !p2) { toast('Ange båda namnen'); return; }
+  S.setup = { p1, p2 };
+  save();
+  boot();
+}
+
+// ============================================================
+// NAV
+// ============================================================
+function showScreen(name, skipNav) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const sc = document.getElementById('s-' + name);
+  if (sc) sc.classList.add('active');
+  if (!skipNav) {
+    const nb = document.getElementById('nb-' + name);
+    if (nb) nb.classList.add('active');
+  }
+  // Scroll to top
+  document.querySelector('.scroll-body').scrollTop = 0;
+}
+
+const TITLES = {
+  home: ['💚 Relationsverktyg', 'Veckolig incheckning'],
+  who: ['👤 Välj dig', ''],
+  survey: ['✏️ Veckans frågor', ''],
+  sync: ['📤 Dela dina svar', ''],
+  import: ['📥 Kombinera svar', '']
+};
+
+function go(name) {
+  showScreen(name);
+  const t = TITLES[name] || ['💚 Relationsverktyg', ''];
+  document.getElementById('hTitle').textContent = t[0];
+  document.getElementById('hSub').textContent = t[1];
+  if (name === 'home') renderHome();
+  if (name === 'sync') renderSync();
+  if (name === 'import') renderImport();
+}
+
+// ============================================================
+// HOME
+// ============================================================
+function renderHome() {
+  const w = S.weeks[S.week];
+  const d1 = !!w?.p1, d2 = !!w?.p2;
+  const p1n = S.setup.p1, p2n = S.setup.p2;
+  const pct = ((d1?1:0)+(d2?1:0))*50;
+
+  // Check if reminder should show
+  const shouldRemind = !d1 || !d2;
+  const lastEntry = getLastEntryDate();
+  const daysSince = lastEntry ? Math.floor((Date.now() - new Date(lastEntry)) / 86400000) : 999;
+  const showReminder = shouldRemind && daysSince >= 6;
+
+  let h = '';
+
+  if (showReminder) {
+    h += `<div class="reminder-banner">
+      <div class="reminder-emoji">⏰</div>
+      <div class="reminder-title">Dags för veckans incheckning!</div>
+      <div class="reminder-sub">Det är ${daysSince >= 999 ? 'första gången' : daysSince + ' dagar'} sedan sist. Ta 5 minuter nu.</div>
+    </div>`;
+  }
+
+  h += `<div class="week-badge">📅 Vecka ${S.week}</div>`;
+
+  h += `<div class="card">
+    <div class="card-title">Status</div>
+    <div class="status-row">
+      <div class="dot ${d1?'dot-on':'dot-off'}"></div>
+      <div><div class="status-name">${p1n}</div><div class="status-info">${d1?'✓ Klar':'Inte fyllt i'}</div></div>
+    </div>
+    <div class="status-row">
+      <div class="dot ${d2?'dot-on':'dot-off'}"></div>
+      <div><div class="status-name">${p2n}</div><div class="status-info">${d2?'✓ Klar':'Inte fyllt i'}</div></div>
+    </div>
+    <div class="prog-wrap"><div class="prog-fill" style="width:${pct}%"></div></div>
+    <div class="prog-label">${(d1?1:0)+(d2?1:0)}/2 klara</div>
+  </div>`;
+
+  if (!d1 || !d2) {
+    h += `<div class="card">
+      <div class="card-title">Fyll i</div>
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:14px;">Välj vem du är för att logga veckans svar.</p>
+      ${!d1 ? `<button class="btn btn-primary" onclick="loginAs('p1')">Jag är ${p1n}</button>` : `<button class="btn btn-ghost" disabled>✓ ${p1n} klar</button>`}
+      ${!d2 ? `<button class="btn btn-secondary" onclick="loginAs('p2')">Jag är ${p2n}</button>` : `<button class="btn btn-ghost" disabled>✓ ${p2n} klar</button>`}
+    </div>`;
+  }
+
+  if (d1 || d2) {
+    h += `<div class="card">
+      <div class="card-title">Nästa steg</div>
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:14px;">
+        ${d1 && d2 ? 'Båda klara! Öppna Cowork-tavlan på datorn för att se analys och råd.' : 'Skicka din synkkod till din partner, och importera hens kod här.'}
+      </p>
+      <button class="btn ${d1&&d2?'btn-accent':'btn-secondary'}" onclick="go('sync')">
+        ${d1&&d2?'📤 Se & dela synkkod':'📤 Dela min synkkod'}
+      </button>
+    </div>`;
+  }
+
+  h += `<button class="btn btn-ghost" onclick="confirmNewWeek()" style="margin-top:4px;">+ Starta ny vecka (${S.week+1})</button>`;
+
+  document.getElementById('home-content').innerHTML = h;
+}
+
+function getLastEntryDate() {
+  const dates = Object.values(S.weeks)
+    .flatMap(w => [w.p1?.at, w.p2?.at].filter(Boolean));
+  return dates.sort().pop() || null;
+}
+
+// ============================================================
+// SURVEY
+// ============================================================
+function goSurvey() {
+  const w = S.weeks[S.week];
+  if (!w?.p1 && !w?.p2) { showWho(); return; }
+  if (!w?.p1) { loginAs('p1'); return; }
+  if (!w?.p2) { loginAs('p2'); return; }
+  go('home');
+}
+
+function showWho() {
+  const p1n = S.setup.p1, p2n = S.setup.p2;
+  const w = S.weeks[S.week];
+  const d1 = !!w?.p1, d2 = !!w?.p2;
+  let h = `<div class="partner-choice">`;
+  if (!d1) h += `<button class="partner-btn p1" onclick="loginAs('p1')"><div class="partner-btn-name">${p1n}</div><div class="partner-btn-sub">Logga in som ${p1n}</div></button>`;
+  else h += `<div class="partner-btn" style="opacity:0.4;"><div class="partner-btn-name">✓ ${p1n}</div><div class="partner-btn-sub">Redan klar</div></div>`;
+  if (!d2) h += `<button class="partner-btn p2" onclick="loginAs('p2')"><div class="partner-btn-name">${p2n}</div><div class="partner-btn-sub">Logga in som ${p2n}</div></button>`;
+  else h += `<div class="partner-btn" style="opacity:0.4;"><div class="partner-btn-name">✓ ${p2n}</div><div class="partner-btn-sub">Redan klar</div></div>`;
+  h += `</div>`;
+  document.getElementById('partner-choices').innerHTML = h;
+  showScreen('who');
+  document.getElementById('hTitle').textContent = '👤 Vem är du?';
+  document.getElementById('hSub').textContent = '';
+}
+
+function loginAs(pKey) {
+  S.user = pKey;
+  S.ans = { scores: {}, r: '', fb: {} };
+  const name = pKey === 'p1' ? S.setup.p1 : S.setup.p2;
+  document.getElementById('hTitle').textContent = '✏️ Veckans frågor';
+  document.getElementById('hSub').textContent = name;
+
+  const w = S.weeks[S.week];
+  if (w?.[pKey]) {
+    document.getElementById('survey-content').innerHTML = `<div class="done-card">
+      <div class="done-icon">✅</div>
+      <div class="done-title">${name} har fyllt i</div>
+      <div class="done-sub" style="margin-top:6px;">Vecka ${S.week} är sparad. Dela din synkkod med ${pKey==='p1'?S.setup.p2:S.setup.p1}.</div>
+      <button class="btn btn-secondary" style="margin-top:18px;" onclick="go('home')">← Tillbaka</button>
+    </div>`;
+    showScreen('survey');
+    return;
+  }
+
+  let h = `<p style="font-size:14px;color:var(--text-muted);margin-bottom:18px;line-height:1.6;">Svara utifrån din upplevelse denna vecka. 1 = Aldrig, 5 = Alltid.</p>`;
+
+  QS.forEach((q, i) => {
+    h += `<div class="q-card">
+      <div class="q-num">Fråga ${i+1}/8</div>
+      <div class="q-text">${q.t}</div>
+      <div class="q-ctx">${q.c}</div>
+      <div class="scale-row" id="sr-${i}">
+        ${[1,2,3,4,5].map(n=>`<button class="scale-btn" id="sb${i}-${n}" onclick="pick(${i},${n})">${n}</button>`).join('')}
+      </div>
+      <div class="scale-labels"><span>Aldrig</span><span>Alltid</span></div>
+    </div>`;
+  });
+
+  h += `<div class="card">
+    <div class="card-title">🧠 Fri reflektion</div>
+    <textarea id="rfl" placeholder="Vad har du upplevt, känt eller tänkt den här veckan?" oninput="S.ans.r=this.value"></textarea>
+  </div>`;
+
+  h += `<div class="card">
+    <div class="card-title">💬 Feedback till partnern</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Skriv ärligt och snällt — jag-baserat.</p>`;
+  FB.forEach(f => {
+    h += `<div class="form-label">${f.l}</div>
+    <textarea placeholder="${f.ph}" oninput="S.ans.fb['${f.k}']=this.value"></textarea>`;
+  });
+  h += `</div>`;
+
+  h += `<button class="btn btn-accent" onclick="submitSurvey()">Spara mina svar ✓</button>
+  <button class="btn btn-ghost" onclick="go('home')">Avbryt</button>`;
+
+  document.getElementById('survey-content').innerHTML = h;
+  showScreen('survey');
+}
+
+function pick(qi, v) {
+  S.ans.scores[qi] = v;
+  for (let n=1;n<=5;n++) {
+    const b = document.getElementById(`sb${qi}-${n}`);
+    if (b) b.classList.toggle('sel', n===v);
+  }
+}
+
+function submitSurvey() {
+  const miss = Array.from({length:8},(_,i)=>i).filter(i=>!S.ans.scores[i]);
+  if (miss.length) {
+    toast(`Svara på fråga ${miss[0]+1}`);
+    document.getElementById(`sr-${miss[0]}`).scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+  S.weeks[S.week][S.user] = {
+    s: Array.from({length:8},(_,i)=>S.ans.scores[i]),
+    r: S.ans.r,
+    fb: {...S.ans.fb},
+    at: new Date().toISOString()
+  };
+  save();
+  toast('Sparat! 🎉');
+  setTimeout(() => {
+    renderSync();
+    go('sync');
+  }, 700);
+}
+
+// ============================================================
+// SYNC CODE
+// ============================================================
+function makeSyncCode() {
+  const w = S.weeks[S.week];
+  const myData = S.user ? w[S.user] : null;
+
+  // Package everything for this week
+  const pkg = {
+    v: 2,
+    p1n: S.setup.p1,
+    p2n: S.setup.p2,
+    wk: S.week,
+    p1: w.p1 || null,
+    p2: w.p2 || null,
+    d: today()
+  };
+  return btoa(unescape(encodeURIComponent(JSON.stringify(pkg))));
+}
+
+function renderSync() {
+  const w = S.weeks[S.week];
+  const d1 = !!w?.p1, d2 = !!w?.p2;
+
+  if (!d1 && !d2) {
+    document.getElementById('sync-content').innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--text-muted);">
+      <div style="font-size:36px;margin-bottom:12px;">📤</div>
+      <h3>Ingen data att dela</h3>
+      <p style="margin-top:8px;">Fyll i veckans frågor först.</p>
+      <button class="btn btn-primary" style="margin-top:18px;" onclick="goSurvey()">Fyll i nu →</button>
+    </div>`;
+    return;
+  }
+
+  const code = makeSyncCode();
+  const doneBy = [d1?S.setup.p1:null, d2?S.setup.p2:null].filter(Boolean).join(' & ');
+
+  document.getElementById('sync-content').innerHTML = `
+    <div class="card">
+      <div class="card-title">📤 Din synkkod — vecka ${S.week}</div>
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:10px;line-height:1.5;">
+        Skicka denna kod till din partner via iMessage. Hen importerar den i sin app — eller klistra in båda på Cowork-tavlan.
+      </p>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:6px;">Ifyllt av: <strong>${doneBy}</strong></p>
+      <div class="sync-box" id="syncCodeBox">${code}</div>
+      <div class="copy-status" id="copyStatus"></div>
+      <button class="btn btn-primary" onclick="copyCode()">📋 Kopiera kod</button>
+      <button class="btn btn-secondary" onclick="shareCode()">📤 Dela via...</button>
+    </div>
+    <div class="card" style="background:#fffbeb;border-color:#fcd34d;">
+      <div class="card-title" style="color:#92400e;">Nästa steg</div>
+      <ol style="font-size:14px;color:#78350f;line-height:1.8;padding-left:18px;">
+        <li>Kopiera koden ovan</li>
+        <li>Skicka till ${d1&&d2?'varandra':'din partner'} via iMessage</li>
+        <li>Öppna Cowork-tavlan på datorn</li>
+        <li>Klistra in koden under "Importera"</li>
+        <li>Läs analys och råd ihop</li>
+      </ol>
+    </div>
+  `;
+}
+
+function copyCode() {
+  const code = document.getElementById('syncCodeBox').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    document.getElementById('copyStatus').textContent = '✓ Kopierad!';
+    toast('Kod kopierad!');
+    setTimeout(() => { document.getElementById('copyStatus').textContent = ''; }, 3000);
+  }).catch(() => {
+    // Fallback for older Safari
+    const ta = document.createElement('textarea');
+    ta.value = code;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    document.getElementById('copyStatus').textContent = '✓ Kopierad!';
+    toast('Kod kopierad!');
+  });
+}
+
+function shareCode() {
+  const code = document.getElementById('syncCodeBox').textContent;
+  if (navigator.share) {
+    navigator.share({
+      title: `Relationsverktyg — vecka ${S.week}`,
+      text: `Min synkkod v${S.week}:\n${code}`
+    }).catch(()=>{});
+  } else {
+    copyCode();
+  }
+}
+
+// ============================================================
+// IMPORT
+// ============================================================
+function renderImport() {
+  document.getElementById('import-content').innerHTML = `
+    <div class="card">
+      <div class="card-title">📥 Importera partnerdata</div>
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
+        Klistra in din partners synkkod för att kombinera era svar på den här enheten.
+      </p>
+      <textarea id="importInput" placeholder="Klistra in synkkod här..." rows="5" style="font-family:monospace;font-size:13px;"></textarea>
+      <button class="btn btn-primary" style="margin-top:12px;" onclick="doImport()">Importera →</button>
+    </div>
+    <div id="import-result"></div>
+  `;
+}
+
+function doImport() {
+  const raw = document.getElementById('importInput').value.trim();
+  if (!raw) { toast('Klistra in en kod'); return; }
+  try {
+    const pkg = JSON.parse(decodeURIComponent(escape(atob(raw))));
+    if (!pkg.wk || !pkg.p1n) throw new Error('Ogiltig kod');
+
+    // Merge into our state
+    if (!S.weeks[pkg.wk]) {
+      S.weeks[pkg.wk] = { n: pkg.wk, d: pkg.d, p1: null, p2: null };
+    }
+    if (pkg.p1) S.weeks[pkg.wk].p1 = pkg.p1;
+    if (pkg.p2) S.weeks[pkg.wk].p2 = pkg.p2;
+
+    // Update names if not set
+    if (!S.setup) S.setup = { p1: pkg.p1n, p2: pkg.p2n };
+
+    S.week = pkg.wk;
+    save();
+
+    const d1 = !!S.weeks[pkg.wk].p1;
+    const d2 = !!S.weeks[pkg.wk].p2;
+    const doneBy = [d1?S.setup.p1:null, d2?S.setup.p2:null].filter(Boolean);
+
+    document.getElementById('import-result').innerHTML = `<div class="done-card">
+      <div class="done-icon">✅</div>
+      <div class="done-title">Importerat!</div>
+      <div class="done-sub">Vecka ${pkg.wk} innehåller nu svar från: ${doneBy.join(' & ')}${d1&&d2?' — dags för analys på Cowork-tavlan!':''}</div>
+    </div>`;
+
+    toast('Importerat! ✅');
+    setTimeout(() => go('home'), 1500);
+  } catch(e) {
+    toast('Felaktig kod — försök igen');
+  }
+}
+
+// ============================================================
+// NEW WEEK
+// ============================================================
+function confirmNewWeek() {
+  const w = S.weeks[S.week];
+  if (!w?.p1 && !w?.p2) { toast('Fyll i vecka ' + S.week + ' först'); return; }
+  if (!confirm(`Starta vecka ${S.week+1}?\n\nVecka ${S.week} låses.`)) return;
+  S.week += 1;
+  S.weeks[S.week] = { n: S.week, d: today(), p1: null, p2: null };
+  save();
+  toast('Vecka ' + S.week + ' startad!');
+  go('home');
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>

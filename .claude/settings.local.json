@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git --version)",
+      "Bash(npm --version)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\krist\\\\Documents\\\\Claude\\\\Projects\\\\Relationsterapi\\\\supabase\\\\migrations\" 2>&1; mkdir -p \"C:\\\\Users\\\\krist\\\\Documents\\\\Claude\\\\Projects\\\\Relationsterapi\\\\.claude\\\\commands\" 2>&1; echo done)",
+      "Bash(supabase --version)",
+      "Bash(npm install *)",
+      "Bash(winget install *)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' -X POST https://api.supabase.com/v1/projects/uydnsxpxcgyuedcnzfyy/database/query -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5ZG5zeHB4Y2d5dWVkY256Znl5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODc5OTk5NCwiZXhwIjoyMDk0Mzc1OTk0fQ.gfKOtdywZVKuX9p4eVOsmgJrixByXmDMonBaNi46Kn0' -H 'Content-Type: application/json' -d '{\"query\":\"SELECT 1 as test\"}')",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' https://uydnsxpxcgyuedcnzfyy.supabase.co/pg/query -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5ZG5zeHB4Y2d5dWVkY256Znl5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3ODc5OTk5NCwiZXhwIjoyMDk0Mzc1OTk0fQ.gfKOtdywZVKuX9p4eVOsmgJrixByXmDMonBaNi46Kn0' -H 'Content-Type: application/json' -d '{\"query\":\"SELECT 1\"}')",
+      "Bash(curl -s \"https://api.github.com/repos/supabase/cli/releases/latest\")",
+      "Bash(curl -L -o supabase_cli.tar.gz https://github.com/supabase/cli/releases/download/v2.98.2/supabase_windows_amd64.tar.gz)",
+      "Bash(tar -xzf supabase_cli.tar.gz)",
+      "Bash(ls supabase*.exe)",
+      "Bash(ls *.exe)",
+      "Bash(find . -name \"*.exe\" -maxdepth 2)",
+      "Bash(timeout 15 ./supabase.exe login)",
+      "Bash(SUPABASE_ACCESS_TOKEN=__TRACKED_VAR__ ./supabase.exe link --project-ref uydnsxpxcgyuedcnzfyy)",
+      "Bash(SUPABASE_ACCESS_TOKEN=__TRACKED_VAR__ ./supabase.exe db push)",
+      "Bash(curl -s 'https://uydnsxpxcgyuedcnzfyy.supabase.co/rest/v1/rooms?limit=1' -H 'apikey: sb_publishable_i99YkdBlVCE9gx1wdP3gyA_9Gt2Bnza' -H 'Authorization: Bearer sb_publishable_i99YkdBlVCE9gx1wdP3gyA_9Gt2Bnza')",
+      "Bash(curl -s 'https://uydnsxpxcgyuedcnzfyy.supabase.co/rest/v1/entries?limit=1' -H 'apikey: sb_publishable_i99YkdBlVCE9gx1wdP3gyA_9Gt2Bnza' -H 'Authorization: Bearer sb_publishable_i99YkdBlVCE9gx1wdP3gyA_9Gt2Bnza')",
+      "Bash(rm -f supabase_cli.tar.gz supabase.exe)",
+      "Bash(gh auth *)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}

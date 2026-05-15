@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Relationer">
+<meta name="theme-color" content="#2d5a4e">
+<title>Relationsverktyg</title>
+<link rel="manifest" href="manifest.json">
+<style>
+/* ===== DESIGNSYSTEM ===== */
+:root {
+  --bg: #faf9f7;
+  --card: #ffffff;
+  --primary: #2d5a4e;
+  --primary-light: #3d7a6a;
+  --accent: #e8956e;
+  --text: #1c1c1e;
+  --text-muted: #6b7280;
+  --border: #e5e0d8;
+  --success: #16a34a;
+  --radius: 14px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* ===== APP-LAYOUT ===== */
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 430px;
+  margin: 0 auto;
+}
+.header {
+  background: var(--primary);
+  color: white;
+  padding: calc(var(--safe-top) + 14px) 20px 14px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.header-texts { flex: 1; }
+.header-title { font-size: 17px; font-weight: 600; }
+.header-sub { font-size: 12px; opacity: 0.75; margin-top: 1px; min-height: 16px; }
+.scroll-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 18px 18px calc(var(--safe-bottom) + 90px);
+}
+
+/* ===== SKÄRMAR ===== */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ===== KORT ===== */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* ===== KNAPPAR ===== */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 15px 20px;
+  border-radius: var(--radius);
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s;
+  margin-bottom: 10px;
+  font-family: inherit;
+  -webkit-appearance: none;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:active { background: var(--primary-light); transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.5; }
+.btn-secondary { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+.btn-secondary:active { background: rgba(45,90,78,0.08); }
+.btn-accent { background: var(--accent); color: white; }
+.btn-accent:active { opacity: 0.85; transform: scale(0.98); }
+.btn-accent:disabled { opacity: 0.4; }
+.btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); font-weight: 400; }
+.btn-danger { background: transparent; color: #dc2626; border: 2px solid #dc2626; }
+
+/* ===== INMATNINGSFÄLT ===== */
+input, textarea {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-size: 16px;
+  font-family: inherit;
+  background: white;
+  color: var(--text);
+  outline: none;
+  -webkit-appearance: none;
+  display: block;
+}
+input:focus, textarea:focus { border-color: var(--primary); }
+textarea { resize: none; min-height: 90px; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 14px 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.form-label:first-child { margin-top: 0; }
+
+/* ===== SKALOR FÖR FRÅGOR ===== */
+.scale-row {
+  display: flex;
+  gap: 7px;
+  margin: 10px 0 4px;
+}
+.scale-btn {
+  flex: 1;
+  height: 50px;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: white;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.1s;
+  font-family: inherit;
+  -webkit-appearance: none;
+}
+.scale-btn.sel {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+.scale-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+/* ===== FRÅGEKORT ===== */
+.q-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.q-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.q-text { font-size: 15px; line-height: 1.45; margin-bottom: 4px; }
+.q-ctx { font-size: 12px; color: var(--text-muted); font-style: italic; margin-bottom: 8px; }
+
+/* ===== PÅMINNELSEBANNER ===== */
+.reminder-banner {
+  background: linear-gradient(135deg, #2d5a4e, #3d7a6a);
+  color: white;
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.reminder-emoji { font-size: 36px; margin-bottom: 8px; }
+.reminder-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.reminder-sub { font-size: 14px; opacity: 0.85; }
+
+/* ===== STATUSRAD ===== */
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px;
+  background: var(--bg);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+.dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.dot-on { background: var(--success); }
+.dot-off { background: #d1d5db; }
+.status-name { font-weight: 600; font-size: 15px; }
+.status-info { font-size: 13px; color: var(--text-muted); }
+
+/* ===== VECKOBADGE ===== */
+.week-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--primary);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+/* ===== PROGRESS ===== */
+.prog-wrap { background: var(--border); border-radius: 4px; height: 6px; margin: 8px 0 4px; }
+.prog-fill { height: 6px; border-radius: 4px; background: var(--primary); transition: width 0.3s; }
+.prog-label { font-size: 12px; color: var(--text-muted); text-align: right; }
+
+/* ===== FORMULÄRPROGRESS ===== */
+.form-progress {
+  background: white;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 18px;
+  flex-shrink: 0;
+}
+.form-prog-bar { background: var(--border); border-radius: 4px; height: 4px; }
+.form-prog-fill { height: 4px; border-radius: 4px; background: var(--accent); transition: width 0.3s; }
+.form-prog-text { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+/* ===== NAVIGERING ===== */
+.nav-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 430px;
+  margin: 0 auto;
+  background: white;
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding: 8px 0 calc(var(--safe-bottom) + 8px);
+  z-index: 100;
+}
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+}
+.nav-btn svg { width: 22px; height: 22px; }
+.nav-btn.active { color: var(--primary); }
+
+/* ===== TOAST ===== */
+.toast {
+  position: fixed;
+  bottom: calc(var(--safe-bottom) + 90px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1c1c1e;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+  pointer-events: none;
+  max-width: 90vw;
+}
+.toast.show { opacity: 1; }
+
+/* ===== PARTNER-KNAPPAR ===== */
+.partner-choice { display: flex; flex-direction: column; gap: 12px; }
+.partner-btn {
+  padding: 20px;
+  border-radius: var(--radius);
+  border: 2px solid var(--border);
+  background: white;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: all 0.12s;
+  width: 100%;
+}
+.partner-btn:active { transform: scale(0.98); }
+.partner-btn.p1 { border-color: var(--primary); }
+.partner-btn.p2 { border-color: var(--accent); }
+.partner-btn-name { font-size: 19px; font-weight: 700; margin-bottom: 2px; }
+.partner-btn-sub { font-size: 13px; color: var(--text-muted); }
+.partner-btn.p1 .partner-btn-name { color: var(--primary); }
+.partner-btn.p2 .partner-btn-name { color: var(--accent); }
+
+/* ===== FEEDBACK-BLOCK ===== */
+.fb-block {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 13px;
+  margin-bottom: 12px;
+  border-left: 3px solid var(--accent);
+}
+.fb-label { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 5px; }
+
+/* ===== BEKRÄFTELSE ===== */
+.done-card {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1px solid #86efac;
+  border-radius: var(--radius);
+  padding: 32px 20px;
+  text-align: center;
+}
+.done-icon { font-size: 56px; margin-bottom: 12px; }
+.done-title { font-size: 22px; font-weight: 700; color: #15803d; margin-bottom: 8px; }
+.done-sub { font-size: 15px; color: #166534; line-height: 1.6; }
+
+/* ===== INTRO-HERO ===== */
+.intro-hero {
+  background: linear-gradient(135deg, var(--primary), #1a3d35);
+  color: white;
+  border-radius: var(--radius);
+  padding: 28px 22px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.intro-hero-icon { font-size: 48px; margin-bottom: 12px; }
+.intro-hero-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.intro-hero-sub { font-size: 14px; opacity: 0.85; line-height: 1.6; }
+
+/* ===== RUMSKOD-VISNING ===== */
+.code-display {
+  font-family: 'Courier New', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  color: var(--primary);
+  text-align: center;
+  padding: 14px;
+  background: #f0f9f5;
+  border: 2px solid var(--primary);
+  border-radius: 10px;
+  margin: 12px 0;
+}
+
+/* ===== LADDNINGS-SPINNER ===== */
+.spinner {
+  display: inline-block;
+  width: 20px; height: 20px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== OFFLINE-BANNER ===== */
+.offline-banner {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  color: #92400e;
+  display: none;
+}
+.offline-banner.show { display: block; }
+
+/* ===== INFORAD I INSTÄLLNINGAR ===== */
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.info-row:last-child { border-bottom: none; }
+.info-row-label { font-size: 14px; color: var(--text-muted); }
+.info-row-value { font-size: 15px; font-weight: 600; color: var(--text); }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- HUVUD-HEADER (synlig alltid) -->
+  <div class="header">
+    <div class="header-texts">
+      <div class="header-title" id="hTitle">💚 Relationsverktyg</div>
+      <div class="header-sub" id="hSub">Veckolig incheckning</div>
+    </div>
+  </div>
+
+  <!-- FORMULÄRPROGRESS (visas bara på formulärskärmen) -->
+  <div class="form-progress" id="formProgress" style="display:none;">
+    <div class="form-prog-bar"><div class="form-prog-fill" id="formProgFill" style="width:0%"></div></div>
+    <div class="form-prog-text" id="formProgText">0 av 8 frågor besvarade</div>
+  </div>
+
+  <div class="scroll-body">
+
+    <!-- ===================== ONBOARDING: RUMSKOD ===================== -->
+    <div class="screen active" id="s-code">
+      <div class="intro-hero">
+        <div class="intro-hero-icon">💚</div>
+        <div class="intro-hero-title">Välkommen</div>
+        <div class="intro-hero-sub">Ert gemensamma rum ger er en privat plats att checka in varje vecka.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Ange rumskod</div>
+        <p style="font-size:14px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">Om din partner redan har skapat ett rum — ange den 6-teckens kod hen delade med dig.</p>
+        <input type="text" id="codeInput" placeholder="T.ex. ABC123" maxlength="6"
+          style="text-transform:uppercase;letter-spacing:4px;font-size:22px;font-weight:700;text-align:center;"
+          autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+        <button class="btn btn-primary" id="joinBtn" onclick="joinRoom()" style="margin-top:12px;">
+          Gå med i rummet →
+        </button>
+      </div>
+      <div style="text-align:center;margin:4px 0 10px;">
+        <span style="font-size:14px;color:var(--text-muted);">Inget rum ännu? </span>
+      </div>
+      <button class="btn btn-secondary" onclick="showScreen('create')">Skapa nytt rum</button>
+    </div>
+
+    <!-- ===================== ONBOARDING: SKAPA RUM ===================== -->
+    <div class="screen" id="s-create">
+      <div class="card">
+        <div class="card-title">Skapa nytt rum</div>
+        <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px;line-height:1.6;">Ni delar ett rum — ange båda namnen så genereras en unik rumskod som ni sedan delar.</p>
+        <div class="form-label">Ditt namn</div>
+        <input type="text" id="createName1" placeholder="T.ex. Kristian" autocomplete="off">
+        <div class="form-label">Partnerns namn</div>
+        <input type="text" id="createName2" placeholder="T.ex. Elisabet" autocomplete="off">
+        <button class="btn btn-primary" id="createBtn" onclick="createRoom()" style="margin-top:16px;">
+          Skapa rum →
+        </button>
+        <button class="btn btn-ghost" onclick="showScreen('code')">← Tillbaka</button>
+      </div>
+    </div>
+
+    <!-- ===================== ONBOARDING: VEM ÄR DU ===================== -->
+    <div class="screen" id="s-who">
+      <div class="card">
+        <div class="card-title">Vem är du?</div>
+        <p style="font-size:14px;color:var(--text-muted);margin-bottom:18px;line-height:1.6;">Välj ditt namn — du behöver bara göra detta en gång. Appen kommer ihåg dig.</p>
+        <div class="partner-choice" id="whoChoices"></div>
+      </div>
+    </div>
+
+    <!-- ===================== HEMSKÄRM ===================== -->
+    <div class="screen" id="s-home">
+      <div id="homeContent"></div>
+    </div>
+
+    <!-- ===================== FORMULÄR ===================== -->
+    <div class="screen" id="s-form">
+      <div id="formContent"></div>
+    </div>
+
+    <!-- ===================== BEKRÄFTELSE ===================== -->
+    <div class="screen" id="s-confirm">
+      <div id="confirmContent"></div>
+    </div>
+
+    <!-- ===================== INSTÄLLNINGAR ===================== -->
+    <div class="screen" id="s-settings">
+      <div id="settingsContent"></div>
+    </div>
+
+  </div><!-- scroll-body -->
+</div><!-- app -->
+
+<!-- NEDRE NAVIGERING (dold under onboarding) -->
+<nav class="nav-bottom" id="mainNav" style="display:none;">
+  <button class="nav-btn" id="nb-home" onclick="goHome()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Hem
+  </button>
+  <button class="nav-btn" id="nb-form" onclick="goForm()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Fyll i
+  </button>
+  <button class="nav-btn" id="nb-settings" onclick="goSettings()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Inställningar
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+// Importerar Supabase-klienten från config.js
+import { supabase } from './config.js'
+
+// ============================================================
+// APP-TILLSTÅND — sparas i localStorage
+// ============================================================
+const LS_KEY = 'rv_state_v1'
+
+// Hämtar sparad state från localStorage, eller null om ny användare
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch(e) { return null }
+}
+
+// Sparar state till localStorage
+function saveState(s) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(s)) } catch(e) {}
+}
+
+// Nuvarande state — fylls på under onboarding
+let state = loadState()
+// Tillfälliga svar under formulärfyllning
+let answers = { scores: {}, reflection: '', appreciation: '', wish: '', insight: '' }
+// Veckostatus — hämtas från Supabase
+let weekStatus = null
+
+// ============================================================
+// VECKONUMMER — YYYYVV format (t.ex. 202620 = vecka 20, 2026)
+// ============================================================
+function getWeekNum() {
+  const now = new Date()
+  // ISO-veckoberäkning: måndag är veckans första dag
+  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+  const day = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - day)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  const isoWeek = Math.ceil((((d - yearStart) / 86400000) + 1) / 7)
+  return d.getUTCFullYear() * 100 + isoWeek
+}
+
+// Extraherar veckonumret för visning ("Vecka 20")
+function displayWeek(weekNum) {
+  return `Vecka ${weekNum % 100}`
+}
+
+const WEEK_NUM = getWeekNum()
+
+// ============================================================
+// SKÄRMNAVIGERING
+// ============================================================
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
+  const sc = document.getElementById('s-' + name)
+  if (sc) sc.classList.add('active')
+  document.querySelector('.scroll-body').scrollTop = 0
+
+  // Formulärprogress-bar syns bara på formulärskärmen
+  document.getElementById('formProgress').style.display = name === 'form' ? 'block' : 'none'
+
+  // Uppdatera nav-markering
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'))
+  const nb = document.getElementById('nb-' + name)
+  if (nb) nb.classList.add('active')
+}
+
+function setHeader(title, sub = '') {
+  document.getElementById('hTitle').textContent = title
+  document.getElementById('hSub').textContent = sub
+}
+
+// ============================================================
+// ONBOARDING: GÅ MED I RUM
+// ============================================================
+async function joinRoom() {
+  const code = document.getElementById('codeInput').value.trim().toUpperCase()
+  if (code.length < 3) { toast('Ange rumskod (minst 3 tecken)'); return }
+
+  const btn = document.getElementById('joinBtn')
+  btn.innerHTML = '<span class="spinner"></span>Söker...'
+  btn.disabled = true
+
+  try {
+    const { data, error } = await supabase
+      .from('rooms')
+      .select('id, code, p1_name, p2_name')
+      .eq('code', code)
+      .single()
+
+    if (error || !data) {
+      toast('Hittade inget rum med den koden — kontrollera och försök igen')
+      btn.innerHTML = 'Gå med i rummet →'
+      btn.disabled = false
+      return
+    }
+
+    // Rum hittat — spara tillfälligt och visa partnerval
+    state = { room_id: data.id, room_code: data.code, p1_name: data.p1_name, p2_name: data.p2_name, partner: null }
+    renderWhoScreen()
+    showScreen('who')
+    setHeader('💚 Välkommen', data.p1_name + ' & ' + data.p2_name)
+  } catch(e) {
+    toast('Nätverksfel — kontrollera uppkoppling och försök igen')
+  } finally {
+    btn.innerHTML = 'Gå med i rummet →'
+    btn.disabled = false
+  }
+}
+
+// ============================================================
+// ONBOARDING: SKAPA NYTT RUM
+// ============================================================
+async function createRoom() {
+  const name1 = document.getElementById('createName1').value.trim()
+  const name2 = document.getElementById('createName2').value.trim()
+  if (!name1) { toast('Ange ditt namn'); return }
+  if (!name2) { toast('Ange partnerns namn'); return }
+
+  const btn = document.getElementById('createBtn')
+  btn.innerHTML = '<span class="spinner"></span>Skapar rum...'
+  btn.disabled = true
+
+  // Generera en 6-teckens rumskod (stora bokstäver + siffror, inga förväxlingsbara tecken)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let code = ''
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)]
+
+  try {
+    const { data, error } = await supabase
+      .from('rooms')
+      .insert({ code, p1_name: name1, p2_name: name2 })
+      .select('id, code, p1_name, p2_name')
+      .single()
+
+    if (error) {
+      // Om koden råkade krocka, försök igen (extremt osannolikt)
+      if (error.code === '23505') {
+        toast('Tekniskt fel — försök igen')
+      } else {
+        toast('Kunde inte skapa rum — kontrollera uppkoppling')
+        console.error(error)
+      }
+      btn.innerHTML = 'Skapa rum →'
+      btn.disabled = false
+      return
+    }
+
+    state = { room_id: data.id, room_code: data.code, p1_name: data.p1_name, p2_name: data.p2_name, partner: null }
+    renderWhoScreen()
+    showScreen('who')
+    setHeader('💚 Välkommen', data.p1_name + ' & ' + data.p2_name)
+  } catch(e) {
+    toast('Nätverksfel — kontrollera uppkoppling och försök igen')
+    btn.innerHTML = 'Skapa rum →'
+    btn.disabled = false
+  }
+}
+
+// ============================================================
+// ONBOARDING: VEM ÄR DU?
+// ============================================================
+function renderWhoScreen() {
+  const { p1_name, p2_name } = state
+  document.getElementById('whoChoices').innerHTML = `
+    <button class="partner-btn p1" onclick="choosePartner('p1')">
+      <div class="partner-btn-name">${p1_name}</div>
+      <div class="partner-btn-sub">Jag är ${p1_name}</div>
+    </button>
+    <button class="partner-btn p2" onclick="choosePartner('p2')">
+      <div class="partner-btn-name">${p2_name}</div>
+      <div class="partner-btn-sub">Jag är ${p2_name}</div>
+    </button>
+  `
+}
+
+window.choosePartner = function(partner) {
+  state.partner = partner
+  saveState(state)
+  boot()
+}
+
+// ============================================================
+// STARTAR APPEN — efter att state finns i localStorage
+// ============================================================
+async function boot() {
+  document.getElementById('mainNav').style.display = 'flex'
+  await goHome()
+}
+
+// ============================================================
+// HEMSKÄRM
+// ============================================================
+async function goHome() {
+  showScreen('home')
+  setHeader('💚 Relationsverktyg', 'Veckolig incheckning')
+
+  // Visa laddningsindikator medan Supabase-data hämtas
+  document.getElementById('homeContent').innerHTML = `
+    <div style="text-align:center;padding:40px;color:var(--text-muted);">
+      <div class="spinner" style="border-color:rgba(45,90,78,0.3);border-top-color:var(--primary);width:28px;height:28px;margin:0 auto 12px;display:block;"></div>
+      <p>Hämtar veckostatus...</p>
+    </div>
+  `
+
+  try {
+    const { data, error } = await supabase
+      .from('entries')
+      .select('partner, submitted_at')
+      .eq('room_id', state.room_id)
+      .eq('week_num', WEEK_NUM)
+
+    weekStatus = { p1: false, p2: false, p1_at: null, p2_at: null }
+    if (data) {
+      data.forEach(e => {
+        weekStatus[e.partner] = true
+        weekStatus[e.partner + '_at'] = e.submitted_at
+      })
+    }
+  } catch(e) {
+    // Vid nätverksfel: visa appen ändå med okänd status
+    weekStatus = { p1: false, p2: false, p1_at: null, p2_at: null }
+  }
+
+  renderHome()
+}
+
+function renderHome() {
+  const { p1_name, p2_name, partner } = state
+  const myPartner = partner // 'p1' eller 'p2'
+  const otherPartner = partner === 'p1' ? 'p2' : 'p1'
+  const myName = state[myPartner + '_name']
+  const otherName = state[otherPartner + '_name']
+
+  const myDone = weekStatus[myPartner]
+  const partnerDone = weekStatus[otherPartner]
+  const pct = ((weekStatus.p1 ? 1 : 0) + (weekStatus.p2 ? 1 : 0)) * 50
+
+  // Påminnelse om det gått 7+ dagar utan incheckning för mig
+  const lastAt = weekStatus[myPartner + '_at'] || state.last_submit_at || null
+  const daysSince = lastAt
+    ? Math.floor((Date.now() - new Date(lastAt)) / 86400000)
+    : 999
+  const showReminder = !myDone && daysSince >= 6
+
+  let h = ''
+
+  if (!navigator.onLine) {
+    h += `<div class="offline-banner show">📵 Du är offline — senaste kända status visas. Submit är inte möjligt just nu.</div>`
+  }
+
+  if (showReminder) {
+    h += `<div class="reminder-banner">
+      <div class="reminder-emoji">⏰</div>
+      <div class="reminder-title">Dags för veckans incheckning!</div>
+      <div class="reminder-sub">${daysSince >= 999 ? 'Första incheckningen väntar' : `${daysSince} dagar sedan sist`} — ta 5 minuter nu.</div>
+    </div>`
+  }
+
+  h += `<div class="week-badge">📅 ${displayWeek(WEEK_NUM)}</div>`
+
+  // Statuskort med vem som fyllt i
+  h += `<div class="card">
+    <div class="card-title">Status denna vecka</div>
+    <div class="status-row">
+      <div class="dot ${weekStatus.p1 ? 'dot-on' : 'dot-off'}"></div>
+      <div>
+        <div class="status-name">${p1_name}</div>
+        <div class="status-info">${weekStatus.p1 ? '✓ Klar' : 'Inte fyllt i ännu'}</div>
+      </div>
+    </div>
+    <div class="status-row">
+      <div class="dot ${weekStatus.p2 ? 'dot-on' : 'dot-off'}"></div>
+      <div>
+        <div class="status-name">${p2_name}</div>
+        <div class="status-info">${weekStatus.p2 ? '✓ Klar' : 'Inte fyllt i ännu'}</div>
+      </div>
+    </div>
+    <div class="prog-wrap"><div class="prog-fill" style="width:${pct}%"></div></div>
+    <div class="prog-label">${(weekStatus.p1?1:0)+(weekStatus.p2?1:0)}/2 klara</div>
+  </div>`
+
+  // Åtgärdskort
+  if (myDone) {
+    h += `<div class="card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-color:#86efac;">
+      <div class="card-title" style="color:#15803d;">Din vecka är klar ✓</div>
+      <p style="font-size:14px;color:#166534;margin-bottom:${partnerDone?'0':'14px'};">${
+        partnerDone
+          ? `Båda klara! 🎉 Öppna Cowork-tavlan på datorn för analys och AI-råd.`
+          : `Väntar på ${otherName}. Skicka påminnelse om du vill.`
+      }</p>
+    </div>`
+  } else {
+    h += `<div class="card">
+      <div class="card-title">Din tur</div>
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px;">Fyll i veckans 8 frågor — tar ca 5 minuter.</p>
+      <button class="btn btn-accent" onclick="goForm()" ${!navigator.onLine?'disabled':''}>
+        ${navigator.onLine ? 'Fyll i veckans frågor →' : '📵 Offline — kan inte fylla i'}
+      </button>
+    </div>`
+  }
+
+  document.getElementById('homeContent').innerHTML = h
+}
+
+// ============================================================
+// FORMULÄR
+// ============================================================
+const QUESTIONS = [
+  { text: 'Hur ofta vände sig din partner mot dig när du sökte kontakt — en kommentar, tanke, känsla, blick?', ctx: 'Gottman: Turning toward' },
+  { text: 'Hur ofta tog din partner självmant initiativ till att fråga hur du mår eller tänker?', ctx: 'Aktiv nyfikenhet' },
+  { text: 'När det blev spänt — hur ofta försökte någon reparera (be om ursäkt, mjukna, ta ett steg)?', ctx: 'Gottmans viktigaste skyddsfaktor' },
+  { text: 'Hur ofta startade svåra samtal mjukt, utan kritik eller försvar direkt?', ctx: 'Gottman: Soft start-up' },
+  { text: 'Hur ofta hade ni fysisk närhet eller beröring utan agenda?', ctx: 'Trygg anknytning' },
+  { text: 'Hur ofta hade ni ett emotionellt nära samtal där ingen behövde lösa något?', ctx: 'EFT: Emotionell tillgänglighet' },
+  { text: 'Hur ofta vågade du visa sårbarhet utan att förvänta dig kritik eller att den andra skulle "fixa" det?', ctx: 'Emotionell intimitet' },
+  { text: 'Hur ofta upplevde du att ni jobbade med vardagen som ett team snarare än som separata uppgifter?', ctx: 'Gottman: Shared meaning' }
+]
+
+async function goForm() {
+  // Kolla om redan fyllt i den här veckan
+  if (weekStatus && weekStatus[state.partner]) {
+    showScreen('form')
+    setHeader('✏️ Veckans frågor', state[state.partner + '_name'])
+    document.getElementById('formContent').innerHTML = `
+      <div class="done-card">
+        <div class="done-icon">✅</div>
+        <div class="done-title">Redan klar!</div>
+        <div class="done-sub">${state[state.partner + '_name']} har redan fyllt i ${displayWeek(WEEK_NUM)}.</div>
+      </div>
+      <button class="btn btn-secondary" style="margin-top:14px;" onclick="goHome()">← Tillbaka till hem</button>
+    `
+    return
+  }
+
+  // Återställ svar
+  answers = { scores: {}, reflection: '', appreciation: '', wish: '', insight: '' }
+  renderForm()
+  showScreen('form')
+  setHeader('✏️ Veckans frågor', state[state.partner + '_name'])
+}
+
+function renderForm() {
+  let h = `<p style="font-size:14px;color:var(--text-muted);margin-bottom:18px;line-height:1.6;">
+    Svara utifrån din upplevelse den här veckan. 1 = Aldrig, 5 = Alltid.
+  </p>`
+
+  QUESTIONS.forEach((q, i) => {
+    h += `<div class="q-card" id="qcard-${i}">
+      <div class="q-num">Fråga ${i+1}/8</div>
+      <div class="q-text">${q.text}</div>
+      <div class="q-ctx">${q.ctx}</div>
+      <div class="scale-row" id="sr-${i}">
+        ${[1,2,3,4,5].map(n => `<button class="scale-btn" id="sb${i}-${n}" onclick="pickScore(${i},${n})">${n}</button>`).join('')}
+      </div>
+      <div class="scale-labels"><span>Aldrig</span><span>Alltid</span></div>
+    </div>`
+  })
+
+  // Fri reflektion
+  h += `<div class="card">
+    <div class="card-title">🧠 Fri reflektion</div>
+    <textarea id="reflectionInput" placeholder="Vad har du upplevt, känt eller tänkt den här veckan?"
+      oninput="answers.reflection=this.value"></textarea>
+  </div>`
+
+  // Feedbackfält (NVC-inspirerade)
+  h += `<div class="card">
+    <div class="card-title">💬 Feedback till ${state[state.partner==='p1'?'p2':'p1']+'_name' in state ? state[state.partner==='p1'?'p2_name':'p1_name'] : 'partnern'}</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5;">Skriv ärligt och snällt — utgå från "jag" och "jag önskar".</p>
+
+    <div class="fb-block">
+      <div class="fb-label">💛 Uppskattning</div>
+      <textarea placeholder="En sak jag uppskattade hos dig den här veckan..."
+        oninput="answers.appreciation=this.value" style="background:transparent;border-color:rgba(232,149,110,0.3);"></textarea>
+    </div>
+
+    <div class="fb-block">
+      <div class="fb-label">🌱 Önskan</div>
+      <textarea placeholder="En sak jag skulle önska mer av... (formulera som önskan, inte kritik)"
+        oninput="answers.wish=this.value" style="background:transparent;border-color:rgba(232,149,110,0.3);"></textarea>
+    </div>
+
+    <div class="fb-block">
+      <div class="fb-label">🔍 Insikt om mig själv</div>
+      <textarea placeholder="En insikt om mig själv den här veckan..."
+        oninput="answers.insight=this.value" style="background:transparent;border-color:rgba(232,149,110,0.3);"></textarea>
+    </div>
+  </div>`
+
+  // Submit-knapp
+  h += `<button class="btn btn-accent" id="submitBtn" onclick="submitEntry()">
+    Spara mina svar ✓
+  </button>
+  <button class="btn btn-ghost" onclick="goHome()">Avbryt</button>
+  <div style="height:20px;"></div>`
+
+  document.getElementById('formContent').innerHTML = h
+  updateFormProgress()
+}
+
+// Välj poäng på en fråga
+window.pickScore = function(qi, val) {
+  answers.scores[qi] = val
+  for (let n = 1; n <= 5; n++) {
+    const btn = document.getElementById(`sb${qi}-${n}`)
+    if (btn) btn.classList.toggle('sel', n === val)
+  }
+  updateFormProgress()
+}
+
+function updateFormProgress() {
+  const answered = Object.keys(answers.scores).length
+  const pct = (answered / 8) * 100
+  const fill = document.getElementById('formProgFill')
+  const text = document.getElementById('formProgText')
+  if (fill) fill.style.width = pct + '%'
+  if (text) text.textContent = `${answered} av 8 frågor besvarade`
+}
+
+// ============================================================
+// SUBMIT — skickar till Supabase
+// ============================================================
+async function submitEntry() {
+  // Validering: alla 8 frågor måste besvaras
+  const missing = Array.from({length: 8}, (_, i) => i).filter(i => !answers.scores[i])
+  if (missing.length > 0) {
+    toast(`Svara på fråga ${missing[0] + 1} först`)
+    const card = document.getElementById(`qcard-${missing[0]}`)
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    return
+  }
+
+  if (!navigator.onLine) {
+    toast('Ingen uppkoppling — anslut till internet och försök igen')
+    return
+  }
+
+  const btn = document.getElementById('submitBtn')
+  if (btn) { btn.innerHTML = '<span class="spinner"></span>Sparar...'; btn.disabled = true }
+
+  const scores = Array.from({length: 8}, (_, i) => answers.scores[i])
+
+  const payload = {
+    room_id: state.room_id,
+    partner: state.partner,
+    week_num: WEEK_NUM,
+    scores,
+    reflection: answers.reflection || null,
+    fb_appreciation: answers.appreciation || null,
+    fb_wish: answers.wish || null,
+    fb_insight: answers.insight || null
+  }
+
+  try {
+    const { error } = await supabase
+      .from('entries')
+      .upsert(payload, { onConflict: 'room_id,partner,week_num' })
+
+    if (error) {
+      toast('Kunde inte spara — försök igen')
+      console.error(error)
+      if (btn) { btn.innerHTML = 'Spara mina svar ✓'; btn.disabled = false }
+      return
+    }
+
+    // Uppdatera lokal status
+    state.last_submit_at = new Date().toISOString()
+    saveState(state)
+
+    weekStatus[state.partner] = true
+    weekStatus[state.partner + '_at'] = state.last_submit_at
+
+    // Hämta om partnern också är klar
+    let partnerDone = weekStatus[state.partner === 'p1' ? 'p2' : 'p1']
+
+    showConfirm(partnerDone)
+  } catch(e) {
+    toast('Nätverksfel — försök igen')
+    if (btn) { btn.innerHTML = 'Spara mina svar ✓'; btn.disabled = false }
+  }
+}
+
+// ============================================================
+// BEKRÄFTELSESKÄRM
+// ============================================================
+function showConfirm(partnerDone) {
+  const myName = state[state.partner + '_name']
+  const otherPartner = state.partner === 'p1' ? 'p2' : 'p1'
+  const otherName = state[otherPartner + '_name']
+
+  document.getElementById('confirmContent').innerHTML = `
+    <div class="done-card">
+      <div class="done-icon">✅</div>
+      <div class="done-title">Sparat!</div>
+      <div class="done-sub">
+        ${myName}s svar för ${displayWeek(WEEK_NUM)} är sparade.
+        <br><br>
+        ${partnerDone
+          ? `🎉 ${otherName} har också fyllt i! Öppna Cowork-tavlan på datorn för att se analys och AI-råd.`
+          : `${otherName} har inte fyllt i ännu. Meddela gärna hen att det är dags.`
+        }
+      </div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:16px;" onclick="goHome()">Tillbaka till hem</button>
+  `
+  showScreen('confirm')
+  setHeader('✅ Klar!', displayWeek(WEEK_NUM))
+  document.getElementById('nb-home').classList.add('active')
+}
+
+// ============================================================
+// INSTÄLLNINGAR
+// ============================================================
+function goSettings() {
+  showScreen('settings')
+  setHeader('⚙️ Inställningar', '')
+  renderSettings()
+}
+
+function renderSettings() {
+  const myName = state[state.partner + '_name']
+  const otherName = state[state.partner === 'p1' ? 'p2_name' : 'p1_name']
+
+  document.getElementById('settingsContent').innerHTML = `
+    <div class="card">
+      <div class="card-title">Mitt rum</div>
+      <div class="info-row">
+        <span class="info-row-label">Rumskod</span>
+        <span class="info-row-value" style="font-family:monospace;letter-spacing:3px;">${state.room_code}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-row-label">Jag är</span>
+        <span class="info-row-value">${myName}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-row-label">Partner</span>
+        <span class="info-row-value">${otherName}</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Dela rumskoden</div>
+      <div class="code-display">${state.room_code}</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Skicka denna kod till ${otherName} via SMS eller WhatsApp — hen anger den vid första öppningen av appen.</p>
+      <button class="btn btn-secondary" onclick="shareCode()">Dela rumskod</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Mitt konto</div>
+      <button class="btn btn-ghost" onclick="switchPartner()" style="margin-bottom:8px;">Byt vem jag är</button>
+      <button class="btn btn-danger" onclick="leaveRoom()">Lämna rummet</button>
+    </div>
+  `
+}
+
+// Dela rumskoden via Web Share API (fungerar på Android Chrome)
+window.shareCode = function() {
+  if (navigator.share) {
+    navigator.share({
+      title: 'Relationsverktyg — rumskod',
+      text: `Gå med i vårt rum i Relationsverktyget!\n\nRumskod: ${state.room_code}\n\nÖppna appen och ange koden.`
+    }).catch(() => {})
+  } else {
+    navigator.clipboard.writeText(state.room_code)
+      .then(() => toast('Rumskod kopierad!'))
+      .catch(() => toast('Rumskod: ' + state.room_code))
+  }
+}
+
+// Byt partner utan att lämna rummet
+window.switchPartner = function() {
+  const otherPartner = state.partner === 'p1' ? 'p2' : 'p1'
+  const otherName = state[otherPartner + '_name']
+  if (confirm(`Byt till ${otherName}?\n\nDu kan alltid byta tillbaka.`)) {
+    state.partner = otherPartner
+    saveState(state)
+    toast(`Du är nu ${otherName}`)
+    renderSettings()
+  }
+}
+
+// Lämna rummet — rensar localStorage
+window.leaveRoom = function() {
+  const myName = state[state.partner + '_name']
+  if (confirm(`Lämna rummet?\n\nDina svar i Supabase finns kvar. Du kan gå med igen med rumskoden ${state.room_code}.`)) {
+    localStorage.removeItem(LS_KEY)
+    state = null
+    weekStatus = null
+    document.getElementById('mainNav').style.display = 'none'
+    document.getElementById('codeInput').value = ''
+    showScreen('code')
+    setHeader('💚 Relationsverktyg', 'Veckolig incheckning')
+    toast('Du har lämnat rummet')
+  }
+}
+
+// ============================================================
+// TOAST — tillfälliga meddelanden längst ner
+// ============================================================
+function toast(msg) {
+  const el = document.getElementById('toast')
+  el.textContent = msg
+  el.classList.add('show')
+  clearTimeout(el._timeout)
+  el._timeout = setTimeout(() => el.classList.remove('show'), 3000)
+}
+
+// ============================================================
+// EXPONERA FUNKTIONER TILL KNAPPAR I HTML
+// ============================================================
+window.joinRoom = joinRoom
+window.createRoom = createRoom
+window.goHome = goHome
+window.goForm = goForm
+window.goSettings = goSettings
+window.submitEntry = submitEntry
+
+// Lyssna på online/offline-händelser för att uppdatera UI
+window.addEventListener('online', () => { toast('Online igen!'); if (weekStatus) renderHome() })
+window.addEventListener('offline', () => { toast('Du är offline — submit blockerat'); if (weekStatus) renderHome() })
+
+// Enter-tangent i rumskodsfältet triggar join
+document.getElementById('codeInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') joinRoom()
+})
+
+// ============================================================
+// SERVICE WORKER — registreras för PWA-installation och offline
+// ============================================================
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(err => {
+    console.warn('Service worker kunde inte registreras:', err)
+  })
+}
+
+// ============================================================
+// BOOT — startar appen
+// ============================================================
+if (state && state.room_id && state.partner) {
+  // Redan onboardad — gå direkt till hemskärmen
+  boot()
+} else if (state && state.room_id && !state.partner) {
+  // Halvvägs onboardad — visa partnerval
+  renderWhoScreen()
+  showScreen('who')
+  setHeader('💚 Välkommen', state.p1_name + ' & ' + state.p2_name)
+} else {
+  // Ny användare — visa rumskodsskärm
+  showScreen('code')
+  setHeader('💚 Relationsverktyg', 'Veckolig incheckning')
+}
+</script>
+</body>
+</html>
