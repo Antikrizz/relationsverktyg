@@ -410,6 +410,49 @@ textarea { resize: none; min-height: 90px; }
 .info-row:last-child { border-bottom: none; }
 .info-row-label { font-size: 14px; color: var(--text-muted); }
 .info-row-value { font-size: 15px; font-weight: 600; color: var(--text); }
+
+/* ===== ANALYS-SKÄRM ===== */
+.radar-wrap { position: relative; width: 100%; max-width: 320px; margin: 0 auto 8px; }
+.analys-text p { font-size: 15px; line-height: 1.7; margin-bottom: 10px; }
+.analys-text h3 { font-size: 15px; font-weight: 700; color: var(--primary); margin: 14px 0 6px; }
+.analys-text strong { font-weight: 700; }
+.analys-loading { text-align: center; padding: 30px 0; }
+.chat-msg {
+  padding: 11px 14px;
+  border-radius: 14px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.chat-msg.user {
+  background: var(--primary);
+  color: white;
+  margin-left: 30%;
+  border-bottom-right-radius: 4px;
+}
+.chat-msg.ai {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  margin-right: 10%;
+  border-bottom-left-radius: 4px;
+}
+.chat-send-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.chat-send-row input { flex: 1; }
+.chat-send-btn {
+  padding: 13px 16px;
+  border-radius: 10px;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+}
 </style>
 </head>
 <body>
@@ -498,6 +541,11 @@ textarea { resize: none; min-height: 90px; }
       <div id="settingsContent"></div>
     </div>
 
+    <!-- ===================== ANALYS ===================== -->
+    <div class="screen" id="s-analys">
+      <div id="analysContent"></div>
+    </div>
+
   </div><!-- scroll-body -->
 </div><!-- app -->
 
@@ -511,6 +559,10 @@ textarea { resize: none; min-height: 90px; }
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
     Fyll i
   </button>
+  <button class="nav-btn" id="nb-analys" onclick="goAnalys()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Analys
+  </button>
   <button class="nav-btn" id="nb-settings" onclick="goSettings()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     Inställningar
@@ -521,7 +573,7 @@ textarea { resize: none; min-height: 90px; }
 
 <script type="module">
 // Importerar Supabase-klienten från config.js
-import { supabase } from './config.js'
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js'
 
 // ============================================================
 // APP-TILLSTÅND — sparas i localStorage
@@ -808,7 +860,7 @@ function renderHome() {
       <div class="card-title" style="color:#15803d;">Din vecka är klar ✓</div>
       <p style="font-size:14px;color:#166534;margin-bottom:${partnerDone?'0':'14px'};">${
         partnerDone
-          ? `Båda klara! 🎉 Öppna Cowork-tavlan på datorn för analys och AI-råd.`
+          ? `Båda klara! 🎉 Gå till <strong>Analys</strong>-fliken för radardiagram och AI-råd.`
           : `Väntar på ${otherName}. Skicka påminnelse om du vill.`
       }</p>
     </div>`
@@ -1019,7 +1071,7 @@ function showConfirm(partnerDone) {
         ${myName}s svar för ${displayWeek(WEEK_NUM)} är sparade.
         <br><br>
         ${partnerDone
-          ? `🎉 ${otherName} har också fyllt i! Öppna Cowork-tavlan på datorn för att se analys och AI-råd.`
+          ? `🎉 ${otherName} har också fyllt i! Gå till <strong>Analys</strong>-fliken för radardiagram och AI-råd.`
           : `${otherName} har inte fyllt i ännu. Meddela gärna hen att det är dags.`
         }
       </div>
@@ -1118,6 +1170,229 @@ window.leaveRoom = function() {
 }
 
 // ============================================================
+// ANALYS
+// ============================================================
+const EDGE_URL = `${SUPABASE_URL}/functions/v1/analyze`
+const DIMS_SHORT = ['Toward', 'Nyfikenhet', 'Repair', 'Soft start', 'Beröring', 'Emotionell', 'Sårbarhet', 'Team']
+
+let chatHistory = []
+let analysisLoaded = false
+let analysChart = null
+
+async function goAnalys() {
+  showScreen('analys')
+  setHeader('📊 Analys', state.p1_name + ' & ' + state.p2_name)
+
+  const bothDone = weekStatus && weekStatus.p1 && weekStatus.p2
+
+  if (!bothDone) {
+    document.getElementById('analysContent').innerHTML = `
+      <div class="card">
+        <div class="card-title">Analys</div>
+        <p style="font-size:15px;color:var(--text-muted);line-height:1.6;margin-bottom:16px;">Analysen genereras när båda har fyllt i veckans frågor.</p>
+        <div class="status-row">
+          <div class="dot ${weekStatus?.p1 ? 'dot-on' : 'dot-off'}"></div>
+          <div><div class="status-name">${state.p1_name}</div><div class="status-info">${weekStatus?.p1 ? '✓ Klar' : 'Inte fyllt i ännu'}</div></div>
+        </div>
+        <div class="status-row">
+          <div class="dot ${weekStatus?.p2 ? 'dot-on' : 'dot-off'}"></div>
+          <div><div class="status-name">${state.p2_name}</div><div class="status-info">${weekStatus?.p2 ? '✓ Klar' : 'Inte fyllt i ännu'}</div></div>
+        </div>
+      </div>
+    `
+    return
+  }
+
+  // Hämta poäng för radardiagram
+  const { data: entries } = await supabase
+    .from('entries')
+    .select('partner, scores')
+    .eq('room_id', state.room_id)
+    .eq('week_num', WEEK_NUM)
+
+  const e1 = entries?.find(e => e.partner === 'p1')
+  const e2 = entries?.find(e => e.partner === 'p2')
+
+  document.getElementById('analysContent').innerHTML = `
+    <div class="card">
+      <div class="card-title">Radardiagram — ${displayWeek(WEEK_NUM)}</div>
+      <div class="radar-wrap"><canvas id="radarChart"></canvas></div>
+      <div style="display:flex;gap:20px;justify-content:center;margin-top:8px;font-size:13px;color:var(--text-muted);">
+        <span style="color:#2d5a4e;font-weight:600;">— ${state.p1_name}</span>
+        <span style="color:#e8956e;font-weight:600;">— ${state.p2_name}</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">AI-råd</div>
+      <div id="analysText" class="analys-text">
+        <div class="analys-loading">
+          <div class="spinner" style="border-color:rgba(45,90,78,0.3);border-top-color:var(--primary);width:28px;height:28px;margin:0 auto 12px;display:block;"></div>
+          <p style="color:var(--text-muted);">Analyserar veckans data...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="chatCard" style="display:none;">
+      <div class="card-title">💬 Ställ en följdfråga</div>
+      <div id="chatMsgs"></div>
+      <div class="chat-send-row">
+        <input type="text" id="chatInput" placeholder="Fråga något om analysen..." autocomplete="off"
+          onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="chat-send-btn" onclick="sendChat()">→</button>
+      </div>
+    </div>
+
+    <div style="height:20px;"></div>
+  `
+
+  // Bygg radardiagram
+  if (e1 && e2) {
+    try {
+      const mod = await import('https://esm.sh/chart.js@4/auto')
+      const Chart = mod.default
+      const ctx = document.getElementById('radarChart').getContext('2d')
+      if (analysChart) { analysChart.destroy(); analysChart = null }
+      analysChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: DIMS_SHORT,
+          datasets: [
+            {
+              label: state.p1_name,
+              data: e1.scores,
+              borderColor: '#2d5a4e',
+              backgroundColor: 'rgba(45,90,78,0.12)',
+              pointBackgroundColor: '#2d5a4e',
+              borderWidth: 2,
+            },
+            {
+              label: state.p2_name,
+              data: e2.scores,
+              borderColor: '#e8956e',
+              backgroundColor: 'rgba(232,149,110,0.12)',
+              pointBackgroundColor: '#e8956e',
+              borderWidth: 2,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            r: {
+              min: 0, max: 5,
+              ticks: { stepSize: 1, font: { size: 10 } },
+              pointLabels: { font: { size: 11 } },
+            }
+          }
+        }
+      })
+    } catch(err) {
+      console.warn('Chart.js-fel:', err)
+    }
+  }
+
+  // Hämta AI-analys om inte redan gjort denna session
+  if (!analysisLoaded) {
+    try {
+      const res = await fetch(EDGE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ room_id: state.room_id, mode: 'analyze' })
+      })
+      const json = await res.json()
+      if (json.error) throw new Error(json.error)
+
+      analysisLoaded = true
+      chatHistory = [{ role: 'assistant', content: json.content }]
+
+      document.getElementById('analysText').innerHTML = formatAnalysText(json.content)
+      document.getElementById('chatCard').style.display = 'block'
+    } catch(err) {
+      document.getElementById('analysText').innerHTML = `
+        <p style="color:#dc2626;font-size:14px;">Kunde inte hämta analys: ${err.message}</p>
+        <button class="btn btn-secondary" style="margin-top:12px;" onclick="goAnalys()">Försök igen</button>
+      `
+    }
+  } else {
+    // Återanvänd cachad analys
+    document.getElementById('analysText').innerHTML = formatAnalysText(chatHistory[0]?.content || '')
+    document.getElementById('chatCard').style.display = 'block'
+    renderChatMsgs()
+  }
+}
+
+function formatAnalysText(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^#{1,3}\s+(.+)$/gm, '<h3>$1</h3>')
+    .split('\n\n')
+    .map(p => {
+      p = p.trim()
+      if (!p) return ''
+      if (p.startsWith('<h3>')) return p
+      return `<p>${p.replace(/\n/g, '<br>')}</p>`
+    })
+    .join('')
+}
+
+window.sendChat = async function() {
+  const input = document.getElementById('chatInput')
+  const msg = input?.value?.trim()
+  if (!msg) return
+  input.value = ''
+
+  chatHistory.push({ role: 'user', content: msg })
+  renderChatMsgs()
+
+  // Laddnings-indikator i chatten
+  const msgsEl = document.getElementById('chatMsgs')
+  const loadId = 'cl' + Date.now()
+  msgsEl.insertAdjacentHTML('beforeend', `<div id="${loadId}" class="chat-msg ai" style="color:var(--text-muted);">...</div>`)
+  msgsEl.scrollTop = msgsEl.scrollHeight
+
+  try {
+    const res = await fetch(EDGE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ room_id: state.room_id, mode: 'chat', messages: chatHistory })
+    })
+    const json = await res.json()
+    if (json.error) throw new Error(json.error)
+
+    chatHistory.push({ role: 'assistant', content: json.content })
+    renderChatMsgs()
+  } catch(err) {
+    const el = document.getElementById(loadId)
+    if (el) el.innerHTML = `<span style="color:#dc2626;">Fel: ${err.message}</span>`
+  }
+}
+
+function renderChatMsgs() {
+  const msgsEl = document.getElementById('chatMsgs')
+  if (!msgsEl) return
+  // Hoppa över första assistent-meddelandet (visas ovan som analystext)
+  const chatOnly = chatHistory.slice(1)
+  msgsEl.innerHTML = chatOnly.map(m =>
+    `<div class="chat-msg ${m.role === 'user' ? 'user' : 'ai'}">${
+      m.role === 'user'
+        ? m.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        : formatAnalysText(m.content)
+    }</div>`
+  ).join('')
+  msgsEl.scrollTop = msgsEl.scrollHeight
+}
+
+// ============================================================
 // TOAST — tillfälliga meddelanden längst ner
 // ============================================================
 function toast(msg) {
@@ -1136,6 +1411,7 @@ window.createRoom = createRoom
 window.goHome = goHome
 window.goForm = goForm
 window.goSettings = goSettings
+window.goAnalys = goAnalys
 window.submitEntry = submitEntry
 window.showScreen = showScreen
 

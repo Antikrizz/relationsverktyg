@@ -1,5 +1,5 @@
 // Service Worker — cachar appen för snabb start och offline-stöd
-const CACHE_NAME = 'rv-v2'
+const CACHE_NAME = 'rv-v3'
 
 // Dessa filer cachas vid installation — appen funkar utan internet efter första besöket
 const CACHE_FILES = [
