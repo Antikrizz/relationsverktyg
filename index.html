@@ -1356,46 +1356,24 @@ async function goAnalys() {
     }
   }
 
-  // Hämta AI-analys — kolla databasen först, annars generera ny och spara
+  // Hämta AI-analys — Edge Function hanterar cachning server-side
   if (!analysisLoaded) {
     try {
-      // Kolla om det finns en cachad analys för denna vecka
-      const { data: roomData } = await supabase
-        .from('rooms')
-        .select('analysis_text, analysis_week')
-        .eq('id', state.room_id)
-        .single()
-
-      let analysisText
-
-      if (roomData?.analysis_week === WEEK_NUM && roomData?.analysis_text) {
-        // Använd cachad analys — båda partners ser samma text
-        analysisText = roomData.analysis_text
-      } else {
-        // Generera ny analys och spara till databasen
-        const res = await fetch(EDGE_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({ room_id: state.room_id, mode: 'analyze' })
-        })
-        const json = await res.json()
-        if (json.error) throw new Error(json.error)
-        analysisText = json.content
-
-        // Spara analysen så partnern ser samma text
-        await supabase
-          .from('rooms')
-          .update({ analysis_text: analysisText, analysis_week: WEEK_NUM })
-          .eq('id', state.room_id)
-      }
+      const res = await fetch(EDGE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ room_id: state.room_id, mode: 'analyze' })
+      })
+      const json = await res.json()
+      if (json.error) throw new Error(json.error)
 
       analysisLoaded = true
-      chatHistory = [{ role: 'assistant', content: analysisText }]
-      document.getElementById('analysText').innerHTML = formatAnalysText(analysisText)
+      chatHistory = [{ role: 'assistant', content: json.content }]
+      document.getElementById('analysText').innerHTML = formatAnalysText(json.content)
       document.getElementById('chatCard').style.display = 'block'
     } catch(err) {
       document.getElementById('analysText').innerHTML = `
