@@ -598,7 +598,7 @@ function saveState(s) {
 // Nuvarande state — fylls på under onboarding
 let state = loadState()
 // Tillfälliga svar under formulärfyllning
-let answers = { scores: {}, reflection: '', appreciation: '', wish: '', insight: '' }
+let answers = { scores: {}, comments: {}, reflection: '', appreciation: '', wish: '', insight: '' }
 // Veckostatus — hämtas från Supabase
 let weekStatus = null
 
@@ -883,14 +883,15 @@ function renderHome() {
 // FORMULÄR
 // ============================================================
 const QUESTIONS = [
-  { text: 'Hur ofta vände sig din partner mot dig när du sökte kontakt — en kommentar, tanke, känsla, blick?', ctx: 'Gottman: Turning toward' },
+  { text: 'Hur ofta vände sig din partner mot dig när du sökte kontakt — en kommentar, tanke, känsla, blick?', ctx: 'Turning toward / Anknytning' },
   { text: 'Hur ofta tog din partner självmant initiativ till att fråga hur du mår eller tänker?', ctx: 'Aktiv nyfikenhet' },
-  { text: 'När det blev spänt — hur ofta försökte någon reparera (be om ursäkt, mjukna, ta ett steg)?', ctx: 'Gottmans viktigaste skyddsfaktor' },
-  { text: 'Hur ofta startade svåra samtal mjukt, utan kritik eller försvar direkt?', ctx: 'Gottman: Soft start-up' },
-  { text: 'Hur ofta hade ni fysisk närhet eller beröring utan agenda?', ctx: 'Trygg anknytning' },
-  { text: 'Hur ofta hade ni ett emotionellt nära samtal där ingen behövde lösa något?', ctx: 'EFT: Emotionell tillgänglighet' },
+  { text: 'Hur ofta hade ni ett emotionellt nära samtal där ingen behövde lösa något?', ctx: 'Emotionell tillgänglighet' },
+  { text: 'Hur ofta upplevde du att din partner försökte förstå din känsla eller upplevelse (även när ni inte höll med varandra)?', ctx: 'Empati och förståelse' },
   { text: 'Hur ofta vågade du visa sårbarhet utan att förvänta dig kritik eller att den andra skulle "fixa" det?', ctx: 'Emotionell intimitet' },
-  { text: 'Hur ofta upplevde du att ni jobbade med vardagen som ett team snarare än som separata uppgifter?', ctx: 'Gottman: Shared meaning' }
+  { text: 'Hur ofta hade ni fysisk närhet eller beröring utan agenda?', ctx: 'Trygg anknytning' },
+  { text: 'När det blev spänt — hur ofta försökte någon reparera (be om ursäkt, mjukna, ta ett steg)?', ctx: 'Gottmans viktigaste skyddsfaktor' },
+  { text: 'Hur ofta startade svåra samtal mjukt, utan kritik eller försvar direkt?', ctx: 'Soft start-up' },
+  { text: 'Hur ofta upplevde du att ni jobbade med vardagen som ett team snarare än som separata uppgifter?', ctx: 'Shared meaning' }
 ]
 
 async function goForm() {
@@ -910,7 +911,7 @@ async function goForm() {
   }
 
   // Återställ svar
-  answers = { scores: {}, reflection: '', appreciation: '', wish: '', insight: '' }
+  answers = { scores: {}, comments: {}, reflection: '', appreciation: '', wish: '', insight: '' }
   renderForm()
   showScreen('form')
   setHeader('✏️ Veckans frågor', state[state.partner + '_name'])
@@ -921,15 +922,19 @@ function renderForm() {
     Svara utifrån din upplevelse den här veckan. 1 = Aldrig, 5 = Alltid.
   </p>`
 
+  const SCALE_LABELS = ['Inte alls', 'Lite', 'Ibland', 'Ofta', 'Mycket']
   QUESTIONS.forEach((q, i) => {
     h += `<div class="q-card" id="qcard-${i}">
-      <div class="q-num">Fråga ${i+1}/8</div>
+      <div class="q-num">Fråga ${i+1}/9</div>
       <div class="q-text">${q.text}</div>
       <div class="q-ctx">${q.ctx}</div>
       <div class="scale-row" id="sr-${i}">
         ${[1,2,3,4,5].map(n => `<button class="scale-btn" id="sb${i}-${n}" onclick="pickScore(${i},${n})">${n}</button>`).join('')}
       </div>
-      <div class="scale-labels"><span>Aldrig</span><span>Alltid</span></div>
+      <div class="scale-labels">${SCALE_LABELS.map(l => `<span>${l}</span>`).join('')}</div>
+      <textarea style="margin-top:10px;min-height:60px;font-size:14px;color:var(--text-muted);"
+        placeholder="Vad hände som gjorde att du svarade så? (frivilligt)"
+        oninput="answers.comments[${i}]=this.value"></textarea>
     </div>`
   })
 
@@ -987,11 +992,11 @@ window.pickScore = function(qi, val) {
 
 function updateFormProgress() {
   const answered = Object.keys(answers.scores).length
-  const pct = (answered / 8) * 100
+  const pct = (answered / 9) * 100
   const fill = document.getElementById('formProgFill')
   const text = document.getElementById('formProgText')
   if (fill) fill.style.width = pct + '%'
-  if (text) text.textContent = `${answered} av 8 frågor besvarade`
+  if (text) text.textContent = `${answered} av 9 frågor besvarade`
 }
 
 // ============================================================
@@ -999,7 +1004,7 @@ function updateFormProgress() {
 // ============================================================
 async function submitEntry() {
   // Validering: alla 8 frågor måste besvaras
-  const missing = Array.from({length: 8}, (_, i) => i).filter(i => !answers.scores[i])
+  const missing = Array.from({length: 9}, (_, i) => i).filter(i => !answers.scores[i])
   if (missing.length > 0) {
     toast(`Svara på fråga ${missing[0] + 1} först`)
     const card = document.getElementById(`qcard-${missing[0]}`)
@@ -1015,13 +1020,15 @@ async function submitEntry() {
   const btn = document.getElementById('submitBtn')
   if (btn) { btn.innerHTML = '<span class="spinner"></span>Sparar...'; btn.disabled = true }
 
-  const scores = Array.from({length: 8}, (_, i) => answers.scores[i])
+  const scores = Array.from({length: 9}, (_, i) => answers.scores[i])
+  const comments = Object.keys(answers.comments).length > 0 ? answers.comments : null
 
   const payload = {
     room_id: state.room_id,
     partner: state.partner,
     week_num: WEEK_NUM,
     scores,
+    comments,
     reflection: answers.reflection || null,
     fb_appreciation: answers.appreciation || null,
     fb_wish: answers.wish || null,
@@ -1175,7 +1182,7 @@ window.leaveRoom = function() {
 // ANALYS
 // ============================================================
 const EDGE_URL = `${SUPABASE_URL}/functions/v1/analyze`
-const DIMS_SHORT = ['Toward', 'Nyfikenhet', 'Repair', 'Soft start', 'Beröring', 'Emotionell', 'Sårbarhet', 'Team']
+const DIMS_SHORT = ['Toward', 'Nyfikenhet', 'Emotionell', 'Förståelse', 'Sårbarhet', 'Beröring', 'Repair', 'Soft start', 'Team']
 
 let chatHistory = []
 let analysisLoaded = false

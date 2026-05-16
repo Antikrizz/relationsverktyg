@@ -10,11 +10,12 @@ const CORS = {
 const DIMENSIONS = [
   'Turning toward (vänder sig mot kontakt)',
   'Aktiv nyfikenhet (frågar hur den andra mår)',
+  'Emotionell konversation (nära samtal utan att lösa)',
+  'Empati och förståelse (försöker förstå partnerns känsla)',
+  'Sårbarhet (visar sig utan rädsla för kritik)',
+  'Fysisk beröring (närhet utan agenda)',
   'Repair (reparerar när det spänner)',
   'Soft start-up (startar svåra samtal mjukt)',
-  'Fysisk beröring (närhet utan agenda)',
-  'Emotionell konversation (nära samtal utan att lösa)',
-  'Sårbarhet (visar sig utan rädsla för kritik)',
   'Shared meaning (jobbar som ett team)',
 ]
 
