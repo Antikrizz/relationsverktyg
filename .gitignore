@@ -4,3 +4,5 @@ Thumbs.db
 node_modules/
 .supabase/
 supabase/.temp/
+.claude/settings.local.json
+supabase_cli/
