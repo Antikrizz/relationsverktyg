@@ -169,11 +169,15 @@ function buildContext(room: any, entries: any[]) {
     const s1 = latest.p1.scores
     const s2 = latest.p2.scores
 
-    text += `Poäng per dimension (1=Aldrig, 5=Alltid):\n`
+    text += `Poäng per dimension (1=Inte alls, 5=Mycket):\n`
     DIMENSIONS.forEach((dim, i) => {
       const gap = Math.abs(s1[i] - s2[i])
       const gapFlag = gap >= 2 ? ' ← gap' : ''
       text += `  ${dim}: ${p1_name}=${s1[i]}, ${p2_name}=${s2[i]}${gapFlag}\n`
+      const c1 = latest.p1.comments?.[String(i)]
+      const c2 = latest.p2.comments?.[String(i)]
+      if (c1) text += `    ${p1_name}: "${c1}"\n`
+      if (c2) text += `    ${p2_name}: "${c2}"\n`
     })
 
     const avg1 = (s1.reduce((a: number, b: number) => a + b, 0) / 8).toFixed(1)
