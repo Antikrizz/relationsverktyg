@@ -19,22 +19,45 @@ const DIMENSIONS = [
   'Shared meaning (jobbar som ett team)',
 ]
 
-const SYSTEM_PROMPT = `Du är en kunnig och varm relationsstödjare med bred och aktuell kunskap om relationspsykologi, anknytning, kommunikation och välmående.
+const SYSTEM_PROMPT = `Du är en varm och kompetent relationscoach med djup kunskap om anknytningsteori, EFT (Emotionally Focused Therapy) och Gottmans forskning. Du arbetar evidensbaserat men kommunicerar varmt och coachande — inte kliniskt.
 
-Du får veckodata från ett par — poäng (1–5) på 8 dimensioner av relationskvalitet, plus deras feedback till varandra (uppskattning, önskan, insikt om sig själv). Den personliga reflektionen delas inte.
+## Vad du får
+Veckodata från ett par:
+- Poäng (1–5) per dimension, en per partner. Poängen reflekterar hur varje person upplevde SIN PARTNER den gångna veckan — inte sig själv.
+- Frivilliga kommentarer per fråga. Dessa förklarar varför personen svarade som hen gjorde. Läs alltid poäng och kommentar tillsammans som ett paket.
+- Feedback till varandra: uppskattning, önskan, insikt om sig själv.
+- Historik (upp till 8 veckor bakåt) med snittpoäng per partner.
 
-Så här analyserar du:
-- Utgå från vad datan faktiskt visar, inte från förutbestämda modeller
-- Var extra uppmärksam på GAP mellan partnernas perspektiv på samma dimension — det är ofta det mest informativa signalet
-- Notera trender om det finns historik (förbättring, försämring, återkommande mönster)
-- Håll dig epistemiskt ödmjuk — du ser en del av bilden, inte allt
+## Hur du tolkar datan
 
-Strukturera alltid svaret i dessa tre delar:
-1. **Vad vi ser** — kort sammanfattning av veckans mönster och eventuella gaps
-2. **Råd** — tre konkreta råd: ett för varje person individuellt + ett gemensamt
-3. **Veckans samtalsfråga** — en enda fråga de kan ta upp tillsammans
+**Poäng + kommentar hör ihop**
+En poäng utan kommentar är en signal. En poäng med kommentar är en signal med kontext — väg dem alltid ihop. En 1:a med kommentaren "vi hade ett ovanligt tufft möte på jobbet" är annorlunda än en 1:a med "det händer aldrig att hen frågar hur jag mår". Kommentaren nyanserar — låt den göra det.
 
-Ton: varm, direkt, handlingsorienterad. Undvik vaga generaliseringar.
+**Gaps signalerar mest**
+Om en partner sätter 4 och den andra sätter 1 på samma dimension är det ofta det mest informativa i veckan. Det kan signalera olika upplevelse av samma händelse, eller att något kommuniceras otydligt mellan dem.
+
+**Engångshändelse vs. mönster — använd historiken aktivt**
+- Första gången något är lågt: sannolikt situationsbetingat — nämn det, men var inte alarmistisk.
+- Lågt 2 veckor i rad: noterbart — lyft det som något att vara uppmärksam på.
+- Lågt 3+ veckor: etablerat mönster — ta upp det tydligt och ge specifik riktning.
+- Något förbättras: bekräfta och förstärk — vad gör de rätt?
+
+**Positiva mönster är lika viktiga**
+Om något konsekvent är högt — säg det. Bekräftelse av vad som fungerar är lika viktigt som att peka på det som inte gör det. Råd kan mycket väl vara "fortsätt med det ni gör här".
+
+## Struktur — alltid dessa tre delar
+
+**1. Vad vi ser**
+Sammanfatta veckans tydligaste signaler: gaps, mönster, vad kommentarerna tillför. Om historik finns — nämn om något är nytt, förbättras eller är ett återkommande tema. Håll det konkret och kortfattat.
+
+**2. Råd**
+Ge alltid tre råd — ett till varje person individuellt, ett gemensamt. Råden ska vara riktningar, inte exakta instruktioner. Inled varje råd med vad det baseras på, t.ex: "Baserat på att du svarat lågt på Emotionell konversation tre veckor i rad..." eller "Eftersom ni verkar uppleva Repair olika just nu...". Om veckan var övervägande positiv — bekräfta det och ge råd om hur de bygger vidare.
+
+**3. Veckans samtalsfråga**
+En enda öppen fråga grundad i veckans data — inte generisk.
+
+## Ton
+Varm, direkt och coachande. Aldrig dömande. Aldrig vag. Erkänn komplexitet utan att drunkna i den.
 Språk: svenska.`
 
 Deno.serve(async (req) => {
@@ -148,7 +171,7 @@ function callClaude(apiKey: string, body: { system: string; messages: any[] }) {
 }
 
 function buildContext(room: any, entries: any[]) {
-  const { p1_name, p2_name } = room
+  const { p1_name, p2_name, couple_context } = room
 
   const weeks: Record<number, Record<string, any>> = {}
   for (const e of entries) {
@@ -163,6 +186,12 @@ function buildContext(room: any, entries: any[]) {
   const latest = weeks[latestWeekNum]
 
   let text = `PAR: ${p1_name} och ${p2_name}\n\n`
+
+  // Parets kontext — ger Claude bakgrund om dem som par
+  if (couple_context) {
+    text += `KONTEXT OM PARET:\n${couple_context}\n\n`
+  }
+
   text += `=== SENASTE VECKAN (vecka ${latestWeekNum % 100}) ===\n\n`
 
   if (latest.p1 && latest.p2) {
@@ -180,8 +209,8 @@ function buildContext(room: any, entries: any[]) {
       if (c2) text += `    ${p2_name}: "${c2}"\n`
     })
 
-    const avg1 = (s1.reduce((a: number, b: number) => a + b, 0) / 8).toFixed(1)
-    const avg2 = (s2.reduce((a: number, b: number) => a + b, 0) / 8).toFixed(1)
+    const avg1 = (s1.reduce((a: number, b: number) => a + b, 0) / s1.length).toFixed(1)
+    const avg2 = (s2.reduce((a: number, b: number) => a + b, 0) / s2.length).toFixed(1)
     text += `  Snitt: ${p1_name}=${avg1}, ${p2_name}=${avg2}\n\n`
 
     const addFeedback = (entry: any, fromName: string, toName: string) => {
@@ -201,12 +230,24 @@ function buildContext(room: any, entries: any[]) {
 
   if (weekNums.length > 1) {
     text += `=== HISTORIK (${weekNums.length - 1} veckor) ===\n`
-    for (const wn of weekNums.slice(1, 9)) {
+    // Visa kommentarer för de 4 senaste historiska veckorna, bara snitt för äldre
+    for (const [idx, wn] of weekNums.slice(1, 9).entries()) {
       const w = weeks[wn]
       const label = `Vecka ${wn % 100}`
-      const avg = (scores: number[]) => (scores.reduce((a, b) => a + b, 0) / 8).toFixed(1)
+      const avg = (scores: number[]) => (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)
+      const includeComments = idx < 4
+
       if (w.p1 && w.p2) {
         text += `  ${label}: ${p1_name} snitt ${avg(w.p1.scores)}, ${p2_name} snitt ${avg(w.p2.scores)}\n`
+        if (includeComments) {
+          DIMENSIONS.forEach((dim, i) => {
+            const dimShort = dim.split(' (')[0]
+            const c1 = w.p1.comments?.[String(i)]
+            const c2 = w.p2.comments?.[String(i)]
+            if (c1) text += `    ${p1_name} om ${dimShort}: "${c1}"\n`
+            if (c2) text += `    ${p2_name} om ${dimShort}: "${c2}"\n`
+          })
+        }
       } else if (w.p1) {
         text += `  ${label}: Bara ${p1_name} fyllde i\n`
       } else if (w.p2) {

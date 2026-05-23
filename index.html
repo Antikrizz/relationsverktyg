@@ -1095,13 +1095,25 @@ function showConfirm(partnerDone) {
 // ============================================================
 // INSTÄLLNINGAR
 // ============================================================
-function goSettings() {
+async function goSettings() {
   showScreen('settings')
   setHeader('⚙️ Inställningar', '')
-  renderSettings()
+
+  // Hämta parets kontext från Supabase
+  let coupleContext = ''
+  try {
+    const { data } = await supabase
+      .from('rooms')
+      .select('couple_context')
+      .eq('id', state.room_id)
+      .single()
+    coupleContext = data?.couple_context || ''
+  } catch(e) {}
+
+  renderSettings(coupleContext)
 }
 
-function renderSettings() {
+function renderSettings(coupleContext = '') {
   const myName = state[state.partner + '_name']
   const otherName = state[state.partner === 'p1' ? 'p2_name' : 'p1_name']
 
@@ -1123,6 +1135,17 @@ function renderSettings() {
     </div>
 
     <div class="card">
+      <div class="card-title">Om er som par</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
+        Ge AI-coachen lite bakgrund om er — det hjälper analysen bli mer träffsäker. Uppdatera när det känns relevant.
+      </p>
+      <textarea id="coupleContextInput" style="min-height:120px;"
+        placeholder="T.ex.: Vi är ett par som varit tillsammans i 25 år och har två barn. Vi söker stöd för att stärka det vi har och bättre hantera de perioder då relationen känns tyngre."
+      >${coupleContext}</textarea>
+      <button class="btn btn-primary" onclick="saveCoupleContext()" style="margin-top:12px;">Spara</button>
+    </div>
+
+    <div class="card">
       <div class="card-title">Dela rumskoden</div>
       <div class="code-display">${state.room_code}</div>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">Skicka denna kod till ${otherName} via SMS eller WhatsApp — hen anger den vid första öppningen av appen.</p>
@@ -1135,6 +1158,30 @@ function renderSettings() {
       <button class="btn btn-danger" onclick="leaveRoom()">Lämna rummet</button>
     </div>
   `
+}
+
+// Sparar parets kontext och rensar cachad analys
+window.saveCoupleContext = async function() {
+  const text = document.getElementById('coupleContextInput')?.value.trim() || ''
+  const btn = document.querySelector('#settingsContent .btn-primary')
+  if (btn) { btn.innerHTML = '<span class="spinner"></span>Sparar...'; btn.disabled = true }
+
+  try {
+    const { error } = await supabase
+      .from('rooms')
+      .update({ couple_context: text || null, analysis_week: null })
+      .eq('id', state.room_id)
+
+    if (error) throw error
+
+    // Tvinga ny analys nästa gång analys-fliken öppnas
+    analysisLoaded = false
+    toast('Kontext sparad! Ny analys genereras nästa gång.')
+    if (btn) { btn.innerHTML = 'Sparat ✓'; btn.disabled = false }
+  } catch(e) {
+    toast('Kunde inte spara — försök igen')
+    if (btn) { btn.innerHTML = 'Spara'; btn.disabled = false }
+  }
 }
 
 // Dela rumskoden via Web Share API (fungerar på Android Chrome)
@@ -1227,7 +1274,7 @@ async function goAnalys() {
   const weekMap = {}
   for (const e of entries) {
     if (!weekMap[e.week_num]) weekMap[e.week_num] = {}
-    weekMap[e.week_num][e.partner] = e.scores.reduce((a, b) => a + b, 0) / 8
+    weekMap[e.week_num][e.partner] = e.scores.reduce((a, b) => a + b, 0) / e.scores.length
   }
   const sortedWeeks = Object.keys(weekMap).map(Number).sort((a, b) => a - b)
   const trendLabels = sortedWeeks.map(w => `V${w % 100}`)
