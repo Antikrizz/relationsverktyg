@@ -1654,6 +1654,13 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(err => {
     console.warn('Service worker kunde inte registreras:', err)
   })
+
+  // Ladda om sidan automatiskt när en ny SW aktiveras (hämtar färsk index.html)
+  navigator.serviceWorker.addEventListener('message', evt => {
+    if (evt.data?.type === 'SW_UPDATED') {
+      window.location.reload()
+    }
+  })
 }
 
 // ============================================================

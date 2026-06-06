@@ -1,5 +1,5 @@
 // Service Worker — cachar appen för snabb start och offline-stöd
-const CACHE_NAME = 'rv-v7'
+const CACHE_NAME = 'rv-v8'
 
 // Dessa filer cachas vid installation — appen funkar utan internet efter första besöket
 const CACHE_FILES = [
@@ -19,14 +19,15 @@ self.addEventListener('install', evt => {
   self.skipWaiting()
 })
 
-// ACTIVATE: rensa gamla cache-versioner
+// ACTIVATE: rensa gamla cache-versioner och meddela alla öppna flikar att ladda om
 self.addEventListener('activate', evt => {
   evt.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window' }))
+      .then(clients => clients.forEach(client => client.postMessage({ type: 'SW_UPDATED' })))
   )
-  self.clients.claim()
 })
 
 // PUSH: visar notis när servern skickar en påminnelse
