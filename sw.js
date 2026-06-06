@@ -1,5 +1,5 @@
 // Service Worker — cachar appen för snabb start och offline-stöd
-const CACHE_NAME = 'rv-v5'
+const CACHE_NAME = 'rv-v6'
 
 // Dessa filer cachas vid installation — appen funkar utan internet efter första besöket
 const CACHE_FILES = [
@@ -27,6 +27,24 @@ self.addEventListener('activate', evt => {
     )
   )
   self.clients.claim()
+})
+
+// PUSH: visar notis när servern skickar en påminnelse
+self.addEventListener('push', evt => {
+  const data = evt.data?.json() || {}
+  evt.waitUntil(
+    self.registration.showNotification(data.title || '🩷 Relationsverktyg', {
+      body: data.body || 'Dags för veckans incheckning!',
+      icon: './icon.svg',
+      badge: './icon.svg',
+    })
+  )
+})
+
+// Öppnar appen när användaren trycker på notisen
+self.addEventListener('notificationclick', evt => {
+  evt.notification.close()
+  evt.waitUntil(clients.openWindow('/relationsverktyg/'))
 })
 
 // FETCH: cache-first för appfiler, nätverket för Supabase-anrop

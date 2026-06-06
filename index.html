@@ -1153,11 +1153,22 @@ function renderSettings(coupleContext = '') {
     </div>
 
     <div class="card">
+      <div class="card-title">Påminnelser</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
+        Få en notis varje måndag morgon om du inte fyllt i veckans frågor ännu.
+      </p>
+      <button class="btn btn-secondary" id="pushBtn" onclick="togglePush()">🔔 Aktivera veckopåminnelse</button>
+    </div>
+
+    <div class="card">
       <div class="card-title">Mitt konto</div>
       <button class="btn btn-ghost" onclick="switchPartner()" style="margin-bottom:8px;">Byt vem jag är</button>
       <button class="btn btn-danger" onclick="leaveRoom()">Lämna rummet</button>
     </div>
   `
+
+  // Uppdatera push-knappens status asynkront
+  getPushStatus().then(status => renderPushBtn(status))
 }
 
 // Sparar parets kontext och rensar cachad analys
@@ -1222,6 +1233,102 @@ window.leaveRoom = function() {
     showScreen('code')
     setHeader('🩷 Relationsverktyg', 'Veckolig incheckning')
     toast('Du har lämnat rummet')
+  }
+}
+
+// ============================================================
+// PUSH-NOTISER
+// ============================================================
+const VAPID_PUBLIC_KEY = 'BLtwNaajxBdcqmvpRqLvlQbpEdnWzlM74yKMnNYvb5aaW6WrPEBxUkHCnQ3kKk4bL7y5jyG3xZw31_CSfKxwaso'
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = atob(base64)
+  return new Uint8Array([...rawData].map(c => c.charCodeAt(0)))
+}
+
+async function getPushStatus() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) return 'unsupported'
+  const reg = await navigator.serviceWorker.ready
+  if (!reg.pushManager) return 'unsupported'
+  const sub = await reg.pushManager.getSubscription()
+  if (!sub) return Notification.permission === 'denied' ? 'blocked' : 'off'
+  return 'on'
+}
+
+window.togglePush = async function() {
+  const status = await getPushStatus()
+
+  if (status === 'unsupported') {
+    toast('Push-notiser stöds inte på den här enheten')
+    return
+  }
+
+  if (status === 'blocked') {
+    toast('Notiser är blockerade — ändra i webbläsarens inställningar')
+    return
+  }
+
+  if (status === 'on') {
+    // Avregistrera
+    const reg = await navigator.serviceWorker.ready
+    const sub = await reg.pushManager.getSubscription()
+    if (sub) {
+      await sub.unsubscribe()
+      await supabase.from('push_subscriptions')
+        .delete()
+        .eq('room_id', state.room_id)
+        .eq('partner', state.partner)
+    }
+    toast('Påminnelser avaktiverade')
+    renderPushBtn('off')
+    return
+  }
+
+  // Aktivera — begär tillstånd och prenumerera
+  const permission = await Notification.requestPermission()
+  if (permission !== 'granted') {
+    toast('Du behöver tillåta notiser för att aktivera påminnelser')
+    renderPushBtn('blocked')
+    return
+  }
+
+  try {
+    const reg = await navigator.serviceWorker.ready
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    })
+
+    // Spara prenumerationen i Supabase
+    const { error } = await supabase.from('push_subscriptions').upsert({
+      room_id: state.room_id,
+      partner: state.partner,
+      subscription: sub.toJSON()
+    }, { onConflict: 'room_id,partner' })
+
+    if (error) throw error
+    toast('Påminnelser aktiverade! Du får en notis varje måndag.')
+    renderPushBtn('on')
+  } catch (err) {
+    toast('Kunde inte aktivera notiser: ' + err.message)
+  }
+}
+
+function renderPushBtn(status) {
+  const btn = document.getElementById('pushBtn')
+  if (!btn) return
+  if (status === 'on') {
+    btn.textContent = '🔔 Påminnelser aktiverade — tryck för att stänga av'
+    btn.className = 'btn btn-ghost'
+  } else if (status === 'unsupported' || status === 'blocked') {
+    btn.textContent = '🔕 Notiser ej tillgängliga'
+    btn.className = 'btn btn-ghost'
+    btn.disabled = true
+  } else {
+    btn.textContent = '🔔 Aktivera veckopåminnelse'
+    btn.className = 'btn btn-secondary'
   }
 }
 
