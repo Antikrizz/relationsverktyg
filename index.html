@@ -1155,7 +1155,7 @@ function renderSettings(coupleContext = '') {
     <div class="card">
       <div class="card-title">Påminnelser</div>
       <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
-        Få en notis varje måndag morgon om du inte fyllt i veckans frågor ännu.
+        Få en notis varje söndag kl 10 om du inte fyllt i veckans frågor ännu.
       </p>
       <button class="btn btn-secondary" id="pushBtn" onclick="togglePush()">🔔 Aktivera veckopåminnelse</button>
     </div>
@@ -1309,7 +1309,7 @@ window.togglePush = async function() {
     }, { onConflict: 'room_id,partner' })
 
     if (error) throw error
-    toast('Påminnelser aktiverade! Du får en notis varje måndag.')
+    toast('Påminnelser aktiverade! Du får en notis varje söndag kl 10.')
     renderPushBtn('on')
   } catch (err) {
     toast('Kunde inte aktivera notiser: ' + err.message)
