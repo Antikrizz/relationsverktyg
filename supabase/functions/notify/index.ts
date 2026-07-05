@@ -1,6 +1,6 @@
 // Edge Function: notify
 // Skickar push-påminnelser till partners som inte fyllt i veckans frågor.
-// Anropas av en cron-job varje måndag morgon.
+// Anropas av en cron-job varje söndag kl 10 (matchar texten i appens inställningar).
 
 import webpush from 'npm:web-push'
 

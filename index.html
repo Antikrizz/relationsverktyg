@@ -470,7 +470,7 @@ textarea { resize: none; min-height: 90px; }
   <!-- FORMULÄRPROGRESS (visas bara på formulärskärmen) -->
   <div class="form-progress" id="formProgress" style="display:none;">
     <div class="form-prog-bar"><div class="form-prog-fill" id="formProgFill" style="width:0%"></div></div>
-    <div class="form-prog-text" id="formProgText">0 av 8 frågor besvarade</div>
+    <div class="form-prog-text" id="formProgText"></div>
   </div>
 
   <div class="scroll-body">
@@ -601,6 +601,39 @@ let state = loadState()
 let answers = { scores: {}, comments: {}, reflection: '', appreciation: '', wish: '', insight: '' }
 // Veckostatus — hämtas från Supabase
 let weekStatus = null
+
+// ============================================================
+// UTKAST — autosparar formulärsvar så inget försvinner
+// ============================================================
+const DRAFT_KEY = 'rv_draft_v1'
+
+function saveDraft() {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ week: WEEK_NUM, answers })) } catch(e) {}
+}
+
+function loadDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY))
+    return d && d.week === WEEK_NUM ? d.answers : null
+  } catch(e) { return null }
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY) } catch(e) {}
+}
+
+// Escapar HTML så användartext kan visas säkert i fält och meddelanden
+function esc(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+// Anropas från formulärets textfält — inline-handlers når inte modulens
+// variabler direkt, därför går all inmatning via denna globala funktion
+window.updAns = function(key, i, val) {
+  if (i === null) answers[key] = val
+  else answers[key][i] = val
+  saveDraft()
+}
 
 // ============================================================
 // VECKONUMMER — YYYYVV format (t.ex. 202620 = vecka 20, 2026)
@@ -869,7 +902,7 @@ function renderHome() {
   } else {
     h += `<div class="card">
       <div class="card-title">Din tur</div>
-      <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px;">Fyll i veckans 8 frågor — tar ca 5 minuter.</p>
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px;">Fyll i veckans ${QUESTIONS.length} frågor — tar ca 5 minuter.</p>
       <button class="btn btn-accent" onclick="goForm()" ${!navigator.onLine?'disabled':''}>
         ${navigator.onLine ? 'Fyll i veckans frågor →' : '📵 Offline — kan inte fylla i'}
       </button>
@@ -883,15 +916,15 @@ function renderHome() {
 // FORMULÄR
 // ============================================================
 const QUESTIONS = [
-  { text: 'Hur ofta vände sig din partner mot dig när du sökte kontakt — en kommentar, tanke, känsla, blick?', ctx: 'Turning toward / Anknytning' },
-  { text: 'Hur ofta tog din partner självmant initiativ till att fråga hur du mår eller tänker?', ctx: 'Aktiv nyfikenhet' },
-  { text: 'Hur ofta hade ni ett emotionellt nära samtal där ingen behövde lösa något?', ctx: 'Emotionell tillgänglighet' },
-  { text: 'Hur ofta upplevde du att din partner försökte förstå din känsla eller upplevelse (även när ni inte höll med varandra)?', ctx: 'Empati och förståelse' },
-  { text: 'Hur ofta vågade du visa sårbarhet utan att förvänta dig kritik eller att den andra skulle "fixa" det?', ctx: 'Emotionell intimitet' },
-  { text: 'Hur ofta hade ni fysisk närhet eller beröring utan agenda?', ctx: 'Trygg anknytning' },
-  { text: 'När det blev spänt — hur ofta försökte någon reparera (be om ursäkt, mjukna, ta ett steg)?', ctx: 'Gottmans viktigaste skyddsfaktor' },
-  { text: 'Hur ofta startade svåra samtal mjukt, utan kritik eller försvar direkt?', ctx: 'Soft start-up' },
-  { text: 'Hur ofta upplevde du att ni jobbade med vardagen som ett team snarare än som separata uppgifter?', ctx: 'Shared meaning' }
+  { text: 'När du sökte kontakt med din partner — en blick, en kommentar, en tanke — hur ofta fick du gensvar?', ctx: 'Turning toward / Anknytning' },
+  { text: 'Hur ofta frågade din partner självmant hur du mår eller vad du tänker på?', ctx: 'Aktiv nyfikenhet' },
+  { text: 'Hur ofta pratade ni om känslor utan att någon av er försökte lösa eller fixa något?', ctx: 'Emotionell tillgänglighet' },
+  { text: 'Hur ofta kände du att din partner verkligen försökte förstå dig — även när ni tyckte olika?', ctx: 'Empati och förståelse' },
+  { text: 'Hur ofta vågade du dela något svårt eller känsligt utan att vara rädd för kritik?', ctx: 'Sårbarhet och emotionell intimitet' },
+  { text: 'Hur ofta hade ni beröring eller fysisk närhet bara för närhetens skull — en kram, en hand, att sitta nära?', ctx: 'Trygg anknytning' },
+  { text: 'När det blev spänt mellan er — hur ofta tog någon av er första steget för att mjuka upp läget?', ctx: 'Repair — Gottmans viktigaste skyddsfaktor' },
+  { text: 'När något svårt togs upp — hur ofta började samtalet lugnt, utan anklagelser eller försvar?', ctx: 'Soft start-up — mjuk start' },
+  { text: 'Hur ofta kändes det som att ni var ett team i vardagen, snarare än två som skötte var sitt?', ctx: 'Shared meaning — gemensamt liv' }
 ]
 
 async function goForm() {
@@ -905,13 +938,45 @@ async function goForm() {
         <div class="done-title">Redan klar!</div>
         <div class="done-sub">${state[state.partner + '_name']} har redan fyllt i ${displayWeek(WEEK_NUM)}.</div>
       </div>
-      <button class="btn btn-secondary" style="margin-top:14px;" onclick="goHome()">← Tillbaka till hem</button>
+      <button class="btn btn-secondary" style="margin-top:14px;" onclick="editEntry()">✏️ Ändra mina svar</button>
+      <button class="btn btn-ghost" onclick="goHome()">← Tillbaka till hem</button>
     `
     return
   }
 
-  // Återställ svar
-  answers = { scores: {}, comments: {}, reflection: '', appreciation: '', wish: '', insight: '' }
+  // Återuppta sparat utkast om ett finns för denna vecka, annars börja tomt
+  const draft = loadDraft()
+  answers = draft || { scores: {}, comments: {}, reflection: '', appreciation: '', wish: '', insight: '' }
+  if (draft) toast('Fortsätter på ditt sparade utkast')
+  renderForm()
+  showScreen('form')
+  setHeader('✏️ Veckans frågor', state[state.partner + '_name'])
+}
+
+// Hämtar det inskickade svaret och öppnar formuläret förifyllt för ändring
+window.editEntry = async function() {
+  try {
+    const { data } = await supabase
+      .from('entries')
+      .select('scores, comments, reflection, fb_appreciation, fb_wish, fb_insight')
+      .eq('room_id', state.room_id)
+      .eq('partner', state.partner)
+      .eq('week_num', WEEK_NUM)
+      .single()
+    if (data) {
+      answers = {
+        scores: Object.fromEntries((data.scores || []).map((v, i) => [i, v])),
+        comments: data.comments || {},
+        reflection: data.reflection || '',
+        appreciation: data.fb_appreciation || '',
+        wish: data.fb_wish || '',
+        insight: data.fb_insight || ''
+      }
+    }
+  } catch(e) {
+    toast('Kunde inte hämta dina svar — försök igen')
+    return
+  }
   renderForm()
   showScreen('form')
   setHeader('✏️ Veckans frågor', state[state.partner + '_name'])
@@ -919,22 +984,22 @@ async function goForm() {
 
 function renderForm() {
   let h = `<p style="font-size:14px;color:var(--text-muted);margin-bottom:18px;line-height:1.6;">
-    Svara utifrån din upplevelse den här veckan. 1 = Aldrig, 5 = Alltid.
+    Svara utifrån din upplevelse den här veckan. 1 = Inte alls, 5 = Mycket.
   </p>`
 
   const SCALE_LABELS = ['Inte alls', 'Lite', 'Ibland', 'Ofta', 'Mycket']
   QUESTIONS.forEach((q, i) => {
     h += `<div class="q-card" id="qcard-${i}">
-      <div class="q-num">Fråga ${i+1}/9</div>
+      <div class="q-num">Fråga ${i+1}/${QUESTIONS.length}</div>
       <div class="q-text">${q.text}</div>
       <div class="q-ctx">${q.ctx}</div>
       <div class="scale-row" id="sr-${i}">
-        ${[1,2,3,4,5].map(n => `<button class="scale-btn" id="sb${i}-${n}" onclick="pickScore(${i},${n})">${n}</button>`).join('')}
+        ${[1,2,3,4,5].map(n => `<button class="scale-btn${answers.scores[i] === n ? ' sel' : ''}" id="sb${i}-${n}" onclick="pickScore(${i},${n})">${n}</button>`).join('')}
       </div>
       <div class="scale-labels">${SCALE_LABELS.map(l => `<span>${l}</span>`).join('')}</div>
       <textarea style="margin-top:10px;min-height:60px;font-size:14px;color:var(--text-muted);"
         placeholder="Vad hände som gjorde att du svarade så? (frivilligt)"
-        oninput="answers.comments[${i}]=this.value"></textarea>
+        oninput="updAns('comments',${i},this.value)">${esc(answers.comments[i] || '')}</textarea>
     </div>`
   })
 
@@ -942,30 +1007,30 @@ function renderForm() {
   h += `<div class="card">
     <div class="card-title">🧠 Fri reflektion</div>
     <textarea id="reflectionInput" placeholder="Vad har du upplevt, känt eller tänkt den här veckan?"
-      oninput="answers.reflection=this.value"></textarea>
+      oninput="updAns('reflection',null,this.value)">${esc(answers.reflection)}</textarea>
   </div>`
 
   // Feedbackfält (NVC-inspirerade)
   h += `<div class="card">
-    <div class="card-title">💬 Feedback till ${state[state.partner==='p1'?'p2':'p1']+'_name' in state ? state[state.partner==='p1'?'p2_name':'p1_name'] : 'partnern'}</div>
+    <div class="card-title">💬 Feedback till ${state[state.partner === 'p1' ? 'p2_name' : 'p1_name']}</div>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.5;">Skriv ärligt och snällt — utgå från "jag" och "jag önskar".</p>
 
     <div class="fb-block">
       <div class="fb-label">💛 Uppskattning</div>
       <textarea placeholder="En sak jag uppskattade hos dig den här veckan..."
-        oninput="answers.appreciation=this.value" style="background:transparent;border-color:rgba(232,149,110,0.3);"></textarea>
+        oninput="updAns('appreciation',null,this.value)" style="background:transparent;border-color:rgba(232,149,110,0.3);">${esc(answers.appreciation)}</textarea>
     </div>
 
     <div class="fb-block">
       <div class="fb-label">🌱 Önskan</div>
       <textarea placeholder="En sak jag skulle önska mer av... (formulera som önskan, inte kritik)"
-        oninput="answers.wish=this.value" style="background:transparent;border-color:rgba(232,149,110,0.3);"></textarea>
+        oninput="updAns('wish',null,this.value)" style="background:transparent;border-color:rgba(232,149,110,0.3);">${esc(answers.wish)}</textarea>
     </div>
 
     <div class="fb-block">
       <div class="fb-label">🔍 Insikt om mig själv</div>
       <textarea placeholder="En insikt om mig själv den här veckan..."
-        oninput="answers.insight=this.value" style="background:transparent;border-color:rgba(232,149,110,0.3);"></textarea>
+        oninput="updAns('insight',null,this.value)" style="background:transparent;border-color:rgba(232,149,110,0.3);">${esc(answers.insight)}</textarea>
     </div>
   </div>`
 
@@ -987,24 +1052,25 @@ window.pickScore = function(qi, val) {
     const btn = document.getElementById(`sb${qi}-${n}`)
     if (btn) btn.classList.toggle('sel', n === val)
   }
+  saveDraft()
   updateFormProgress()
 }
 
 function updateFormProgress() {
   const answered = Object.keys(answers.scores).length
-  const pct = (answered / 9) * 100
+  const pct = (answered / QUESTIONS.length) * 100
   const fill = document.getElementById('formProgFill')
   const text = document.getElementById('formProgText')
   if (fill) fill.style.width = pct + '%'
-  if (text) text.textContent = `${answered} av 9 frågor besvarade`
+  if (text) text.textContent = `${answered} av ${QUESTIONS.length} frågor besvarade`
 }
 
 // ============================================================
 // SUBMIT — skickar till Supabase
 // ============================================================
 async function submitEntry() {
-  // Validering: alla 8 frågor måste besvaras
-  const missing = Array.from({length: 9}, (_, i) => i).filter(i => !answers.scores[i])
+  // Validering: alla frågor måste besvaras
+  const missing = Array.from({length: QUESTIONS.length}, (_, i) => i).filter(i => !answers.scores[i])
   if (missing.length > 0) {
     toast(`Svara på fråga ${missing[0] + 1} först`)
     const card = document.getElementById(`qcard-${missing[0]}`)
@@ -1020,7 +1086,7 @@ async function submitEntry() {
   const btn = document.getElementById('submitBtn')
   if (btn) { btn.innerHTML = '<span class="spinner"></span>Sparar...'; btn.disabled = true }
 
-  const scores = Array.from({length: 9}, (_, i) => answers.scores[i])
+  const scores = Array.from({length: QUESTIONS.length}, (_, i) => answers.scores[i])
   const comments = Object.keys(answers.comments).length > 0 ? answers.comments : null
 
   const payload = {
@@ -1050,9 +1116,15 @@ async function submitEntry() {
     // Uppdatera lokal status
     state.last_submit_at = new Date().toISOString()
     saveState(state)
+    clearDraft()
 
     weekStatus[state.partner] = true
     weekStatus[state.partner + '_at'] = state.last_submit_at
+
+    // Ny/ändrad data — ogiltigförklara cachad AI-analys så en färsk genereras
+    analysisWeek = null
+    chatHistory = []
+    supabase.from('rooms').update({ analysis_week: null }).eq('id', state.room_id).then(() => {})
 
     // Hämta om partnern också är klar
     let partnerDone = weekStatus[state.partner === 'p1' ? 'p2' : 'p1']
@@ -1186,7 +1258,7 @@ window.saveCoupleContext = async function() {
     if (error) throw error
 
     // Tvinga ny analys nästa gång analys-fliken öppnas
-    analysisLoaded = false
+    analysisWeek = null
     toast('Kontext sparad! Ny analys genereras nästa gång.')
     if (btn) { btn.innerHTML = 'Sparat ✓'; btn.disabled = false }
   } catch(e) {
@@ -1217,7 +1289,8 @@ window.switchPartner = function() {
     state.partner = otherPartner
     saveState(state)
     toast(`Du är nu ${otherName}`)
-    renderSettings()
+    // goSettings hämtar om parkontexten — renderSettings() direkt skulle tömma fältet
+    goSettings()
   }
 }
 
@@ -1336,19 +1409,47 @@ function renderPushBtn(status) {
 // ANALYS
 // ============================================================
 const EDGE_URL = `${SUPABASE_URL}/functions/v1/analyze`
-const DIMS_SHORT = ['Toward', 'Nyfikenhet', 'Emotionell', 'Förståelse', 'Sårbarhet', 'Beröring', 'Repair', 'Soft start', 'Team']
+const DIMS_SHORT = ['Gensvar', 'Nyfikenhet', 'Känslosamtal', 'Förståelse', 'Sårbarhet', 'Beröring', 'Reparation', 'Mjuk start', 'Team']
 
 let chatHistory = []
-let analysisLoaded = false
+let analysisWeek = null   // vecka som nuvarande AI-analys gäller (null = ingen laddad)
 let analysChart = null
 
 async function goAnalys() {
   showScreen('analys')
   setHeader('📊 Analys', state.p1_name + ' & ' + state.p2_name)
 
-  const bothDone = weekStatus && weekStatus.p1 && weekStatus.p2
+  document.getElementById('analysContent').innerHTML = `
+    <div style="text-align:center;padding:40px;color:var(--text-muted);">
+      <div class="spinner" style="border-color:rgba(139,84,103,0.2);border-top-color:var(--primary);width:28px;height:28px;margin:0 auto 12px;display:block;"></div>
+      <p>Hämtar data...</p>
+    </div>
+  `
 
-  if (!bothDone) {
+  // Hämta alla entries för radar + trenddiagram
+  let entries = []
+  try {
+    const { data: allEntries } = await supabase
+      .from('entries')
+      .select('partner, scores, week_num')
+      .eq('room_id', state.room_id)
+      .order('week_num', { ascending: true })
+    entries = allEntries || []
+  } catch(e) {}
+
+  // Analysen visar senaste veckan där BÅDA fyllt i — inte bara innevarande.
+  // Annars "försvinner" en färdig analys så fort veckonumret tickar över.
+  const byWeek = {}
+  for (const e of entries) {
+    if (!byWeek[e.week_num]) byWeek[e.week_num] = {}
+    byWeek[e.week_num][e.partner] = e
+  }
+  const completeWeeks = Object.keys(byWeek).map(Number)
+    .filter(w => byWeek[w].p1 && byWeek[w].p2)
+    .sort((a, b) => a - b)
+  const showWeek = completeWeeks[completeWeeks.length - 1]
+
+  if (!showWeek) {
     document.getElementById('analysContent').innerHTML = `
       <div class="card">
         <div class="card-title">Analys</div>
@@ -1366,35 +1467,29 @@ async function goAnalys() {
     return
   }
 
-  // Hämta alla entries för radar + trenddiagram
-  const { data: allEntries } = await supabase
-    .from('entries')
-    .select('partner, scores, week_num')
-    .eq('room_id', state.room_id)
-    .order('week_num', { ascending: true })
-
-  const entries = allEntries || []
-  const e1 = entries.find(e => e.partner === 'p1' && e.week_num === WEEK_NUM)
-  const e2 = entries.find(e => e.partner === 'p2' && e.week_num === WEEK_NUM)
+  const e1 = byWeek[showWeek].p1
+  const e2 = byWeek[showWeek].p2
 
   // Bygg trenddata — snitt per vecka per partner
-  const weekMap = {}
-  for (const e of entries) {
-    if (!weekMap[e.week_num]) weekMap[e.week_num] = {}
-    weekMap[e.week_num][e.partner] = e.scores.reduce((a, b) => a + b, 0) / e.scores.length
-  }
-  const sortedWeeks = Object.keys(weekMap).map(Number).sort((a, b) => a - b)
+  const avgOf = e => e.scores.reduce((a, b) => a + b, 0) / e.scores.length
+  const sortedWeeks = Object.keys(byWeek).map(Number).sort((a, b) => a - b)
   const trendLabels = sortedWeeks.map(w => `V${w % 100}`)
-  const trend1 = sortedWeeks.map(w => weekMap[w].p1 != null ? +weekMap[w].p1.toFixed(2) : null)
-  const trend2 = sortedWeeks.map(w => weekMap[w].p2 != null ? +weekMap[w].p2.toFixed(2) : null)
+  const trend1 = sortedWeeks.map(w => byWeek[w].p1 ? +avgOf(byWeek[w].p1).toFixed(2) : null)
+  const trend2 = sortedWeeks.map(w => byWeek[w].p2 ? +avgOf(byWeek[w].p2).toFixed(2) : null)
+
+  // Notis om vi visar en tidigare vecka än den pågående
+  const oldWeekNote = showWeek !== WEEK_NUM
+    ? `<p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Visar senaste kompletta veckan (${displayWeek(showWeek)}). ${displayWeek(WEEK_NUM)} pågår fortfarande.</p>`
+    : ''
 
   document.getElementById('analysContent').innerHTML = `
+    ${oldWeekNote}
     <div class="card">
-      <div class="card-title">Radardiagram — ${displayWeek(WEEK_NUM)}</div>
+      <div class="card-title">Radardiagram — ${displayWeek(showWeek)}</div>
       <div class="radar-wrap"><canvas id="radarChart"></canvas></div>
       <div style="display:flex;gap:20px;justify-content:center;margin-top:8px;font-size:13px;color:var(--text-muted);">
-        <span style="color:#2d5a4e;font-weight:600;">— ${state.p1_name}</span>
-        <span style="color:#e8956e;font-weight:600;">— ${state.p2_name}</span>
+        <span style="color:var(--primary);font-weight:600;">— ${state.p1_name}</span>
+        <span style="color:var(--accent);font-weight:600;">— ${state.p2_name}</span>
       </div>
     </div>
 
@@ -1431,7 +1526,7 @@ async function goAnalys() {
   `
 
   // Bygg diagram
-  if (e1 && e2) {
+  {
     try {
       const mod = await import('https://esm.sh/chart.js@4/auto')
       const Chart = mod.default
@@ -1518,7 +1613,7 @@ async function goAnalys() {
   }
 
   // Hämta AI-analys — Edge Function hanterar cachning server-side
-  if (!analysisLoaded) {
+  if (analysisWeek !== showWeek) {
     try {
       const res = await fetch(EDGE_URL, {
         method: 'POST',
@@ -1532,7 +1627,7 @@ async function goAnalys() {
       const json = await res.json()
       if (json.error) throw new Error(json.error)
 
-      analysisLoaded = true
+      analysisWeek = showWeek
       chatHistory = [{ role: 'assistant', content: json.content }]
       document.getElementById('analysText').innerHTML = formatAnalysText(json.content)
       document.getElementById('chatCard').style.display = 'block'
@@ -1551,7 +1646,8 @@ async function goAnalys() {
 }
 
 function formatAnalysText(text) {
-  return text
+  // Escapar HTML först — texten kommer utifrån och ska inte kunna innehålla kod
+  return esc(text)
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/^#{1,3}\s+(.+)$/gm, '<h3>$1</h3>')
     .split('\n\n')

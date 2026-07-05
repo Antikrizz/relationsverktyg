@@ -1,5 +1,5 @@
 // Service Worker — cachar appen för snabb start och offline-stöd
-const CACHE_NAME = 'rv-v8'
+const CACHE_NAME = 'rv-v9'
 
 // Dessa filer cachas vid installation — appen funkar utan internet efter första besöket
 const CACHE_FILES = [
@@ -45,7 +45,8 @@ self.addEventListener('push', evt => {
 // Öppnar appen när användaren trycker på notisen
 self.addEventListener('notificationclick', evt => {
   evt.notification.close()
-  evt.waitUntil(clients.openWindow('/relationsverktyg/'))
+  // scope pekar alltid på appens faktiska URL, oavsett var den hostas
+  evt.waitUntil(clients.openWindow(self.registration.scope))
 })
 
 // FETCH: cache-first för appfiler, nätverket för Supabase-anrop
@@ -66,7 +67,24 @@ self.addEventListener('fetch', evt => {
     return
   }
 
-  // Appfiler: cache-first med nätverksfallback
+  // Själva sidan (navigering): nätverk först så nya versioner syns direkt,
+  // cachen används bara som offline-fallback. Slipper cache-versionsbumpar.
+  if (evt.request.mode === 'navigate') {
+    evt.respondWith(
+      fetch(evt.request).then(resp => {
+        if (resp.ok) {
+          const clone = resp.clone()
+          caches.open(CACHE_NAME).then(c => c.put(evt.request, clone))
+        }
+        return resp
+      }).catch(() =>
+        caches.match(evt.request).then(cached => cached || caches.match('./index.html'))
+      )
+    )
+    return
+  }
+
+  // Övriga appfiler: cache-first med nätverksfallback
   evt.respondWith(
     caches.match(evt.request).then(cached => {
       if (cached) return cached

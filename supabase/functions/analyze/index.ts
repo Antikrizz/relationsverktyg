@@ -166,7 +166,7 @@ function callClaude(apiKey: string, body: { system: string; messages: any[] }) {
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2000, ...body }),
+    body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 2000, ...body }),
   })
 }
 
