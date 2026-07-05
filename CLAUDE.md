@@ -11,7 +11,7 @@ Båda partners öppnar samma URL i Chrome på Android, anger ett delat rumskod (
 - **Frontend:** Vanilla JS + HTML + CSS — ingen build-step, inga frameworks
 - **Backend:** Supabase (PostgreSQL + REST API)
 - **Hosting:** GitHub Pages (statisk HTML)
-- **Auth:** Delad rumskod (6 tecken) — inte full OAuth
+- **Auth:** Delad rumskod (6 tecken) — valideras server-side i Edge Functionen `api`; anon-nyckeln kan inte läsa databasen direkt
 - **PWA:** manifest.json + service worker för installation + offline-stöd
 
 ## Projektkatalog
@@ -73,17 +73,17 @@ CREATE TABLE entries (
 
 -- Push-prenumerationer for veckopaminnelser: se supabase/migrations/003_sync_schema.sql
 
--- RLS: anon kan lasa/skriva (rumskoden ar "losen")
+-- RLS: aktiverat UTAN policies — anon-nyckeln nekas all direktåtkomst.
+-- All åtkomst går via Edge Functions (service role) som validerar rumskoden.
+-- Se supabase/migrations/004_lock_rls.sql.
 ALTER TABLE rooms ENABLE ROW LEVEL SECURITY;
 ALTER TABLE entries ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "open_rooms" ON rooms FOR ALL USING (true);
-CREATE POLICY "open_entries" ON entries FOR ALL USING (true);
 ```
 
 ## Kodstil
 
-- Vanilla JS — inga npm-paket i runtime, inget build-steg
-- Supabase JS via CDN (esm.sh)
+- Vanilla JS — inga npm-paket i runtime, inget build-steg, inget klientbibliotek för Supabase
+- All dataåtkomst via `api(action, payload)` i index.html → Edge Functionen `supabase/functions/api` (kräver rumskod)
 - Mobile-first CSS, max-width 430px
 - Svenska kommentarer och UI-texter
 - Modulär: separera data (supabase), UI (index.html), config (config.js)

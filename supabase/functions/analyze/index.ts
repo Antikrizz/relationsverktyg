@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { room_id, mode, messages } = await req.json()
+    const { room_id, code, mode, messages } = await req.json()
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -78,16 +78,19 @@ Deno.serve(async (req) => {
       'Content-Type': 'application/json',
     }
 
-    // Hämta rum och alla entries parallellt
-    const [roomRes, entriesRes] = await Promise.all([
-      fetch(`${supabaseUrl}/rest/v1/rooms?id=eq.${room_id}&select=*`, { headers: dbHeaders }),
-      fetch(`${supabaseUrl}/rest/v1/entries?room_id=eq.${room_id}&select=*&order=week_num.asc`, { headers: dbHeaders }),
-    ])
-
+    // Slå upp rummet — via rumskod (nya klienter) eller room_id (äldre klienter under övergången)
+    const roomFilter = code
+      ? `code=eq.${encodeURIComponent(String(code).trim().toUpperCase())}`
+      : `id=eq.${room_id}`
+    const roomRes = await fetch(`${supabaseUrl}/rest/v1/rooms?${roomFilter}&select=*`, { headers: dbHeaders })
     const [room] = await roomRes.json()
-    const entries = await entriesRes.json()
-
     if (!room) throw new Error('Rum hittades inte')
+
+    const entriesRes = await fetch(
+      `${supabaseUrl}/rest/v1/entries?room_id=eq.${room.id}&select=*&order=week_num.asc`,
+      { headers: dbHeaders }
+    )
+    const entries = await entriesRes.json()
 
     // Ta reda på senaste veckan där båda fyllt i
     const weeks: Record<number, Record<string, any>> = {}
@@ -137,7 +140,7 @@ Deno.serve(async (req) => {
     // Spara till databasen så partnern får samma svar
     if (latestBothWeek) {
       await fetch(
-        `${supabaseUrl}/rest/v1/rooms?id=eq.${room_id}`,
+        `${supabaseUrl}/rest/v1/rooms?id=eq.${room.id}`,
         {
           method: 'PATCH',
           headers: { ...dbHeaders, 'Prefer': 'return=minimal' },

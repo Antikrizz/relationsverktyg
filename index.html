@@ -574,8 +574,8 @@ textarea { resize: none; min-height: 90px; }
 <div class="toast" id="toast"></div>
 
 <script type="module">
-// Importerar Supabase-klienten från config.js
-import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js'
+// Importerar Supabase-adress och publik nyckel från config.js
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js'
 
 // ============================================================
 // APP-TILLSTÅND — sparas i localStorage
@@ -601,6 +601,30 @@ let state = loadState()
 let answers = { scores: {}, comments: {}, reflection: '', appreciation: '', wish: '', insight: '' }
 // Veckostatus — hämtas från Supabase
 let weekStatus = null
+// Partnerns uppskattning från senaste kompletta veckan — visas på hemskärmen
+let latestAppreciation = null
+
+// ============================================================
+// API — all dataåtkomst går via Edge Functionen "api".
+// Rumskoden skickas med varje anrop och valideras på servern —
+// databasen är stängd för direktåtkomst.
+// ============================================================
+const API_URL = `${SUPABASE_URL}/functions/v1/api`
+
+async function api(action, payload = {}) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify({ action, code: state?.room_code, ...payload })
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok || json.error) throw new Error(json.error || 'Serverfel — försök igen')
+  return json
+}
 
 // ============================================================
 // UTKAST — autosparar formulärsvar så inget försvinner
@@ -691,26 +715,16 @@ async function joinRoom() {
   btn.disabled = true
 
   try {
-    const { data, error } = await supabase
-      .from('rooms')
-      .select('id, code, p1_name, p2_name')
-      .eq('code', code)
-      .single()
-
-    if (error || !data) {
-      toast('Hittade inget rum med den koden — kontrollera och försök igen')
-      btn.innerHTML = 'Gå med i rummet →'
-      btn.disabled = false
-      return
-    }
+    const { room } = await api('get_room', { code })
 
     // Rum hittat — spara tillfälligt och visa partnerval
-    state = { room_id: data.id, room_code: data.code, p1_name: data.p1_name, p2_name: data.p2_name, partner: null }
+    state = { room_id: room.id, room_code: room.code, p1_name: room.p1_name, p2_name: room.p2_name, partner: null }
     renderWhoScreen()
     showScreen('who')
-    setHeader('🩷 Välkommen', data.p1_name + ' & ' + data.p2_name)
+    setHeader('🩷 Välkommen', room.p1_name + ' & ' + room.p2_name)
   } catch(e) {
-    toast('Nätverksfel — kontrollera uppkoppling och försök igen')
+    // TypeError = nätverksfel, annars serverns felmeddelande (t.ex. fel kod)
+    toast(e.name === 'TypeError' ? 'Nätverksfel — kontrollera uppkoppling och försök igen' : e.message)
   } finally {
     btn.innerHTML = 'Gå med i rummet →'
     btn.disabled = false
@@ -730,37 +744,16 @@ async function createRoom() {
   btn.innerHTML = '<span class="spinner"></span>Skapar rum...'
   btn.disabled = true
 
-  // Generera en 6-teckens rumskod (stora bokstäver + siffror, inga förväxlingsbara tecken)
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  let code = ''
-  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)]
-
   try {
-    const { data, error } = await supabase
-      .from('rooms')
-      .insert({ code, p1_name: name1, p2_name: name2 })
-      .select('id, code, p1_name, p2_name')
-      .single()
+    // Rumskoden genereras på servern (garanterat unik)
+    const { room } = await api('create_room', { p1_name: name1, p2_name: name2 })
 
-    if (error) {
-      // Om koden råkade krocka, försök igen (extremt osannolikt)
-      if (error.code === '23505') {
-        toast('Tekniskt fel — försök igen')
-      } else {
-        toast('Kunde inte skapa rum — kontrollera uppkoppling')
-        console.error(error)
-      }
-      btn.innerHTML = 'Skapa rum →'
-      btn.disabled = false
-      return
-    }
-
-    state = { room_id: data.id, room_code: data.code, p1_name: data.p1_name, p2_name: data.p2_name, partner: null }
+    state = { room_id: room.id, room_code: room.code, p1_name: room.p1_name, p2_name: room.p2_name, partner: null }
     renderWhoScreen()
     showScreen('who')
-    setHeader('🩷 Välkommen', data.p1_name + ' & ' + data.p2_name)
+    setHeader('🩷 Välkommen', room.p1_name + ' & ' + room.p2_name)
   } catch(e) {
-    toast('Nätverksfel — kontrollera uppkoppling och försök igen')
+    toast(e.name === 'TypeError' ? 'Nätverksfel — kontrollera uppkoppling och försök igen' : e.message)
     btn.innerHTML = 'Skapa rum →'
     btn.disabled = false
   }
@@ -812,23 +805,33 @@ async function goHome() {
     </div>
   `
 
-  try {
-    const { data, error } = await supabase
-      .from('entries')
-      .select('partner, submitted_at')
-      .eq('room_id', state.room_id)
-      .eq('week_num', WEEK_NUM)
+  weekStatus = { p1: false, p2: false, p1_at: null, p2_at: null }
+  latestAppreciation = null
 
-    weekStatus = { p1: false, p2: false, p1_at: null, p2_at: null }
-    if (data) {
-      data.forEach(e => {
+  try {
+    const { entries } = await api('entries')
+
+    const byWeek = {}
+    for (const e of entries) {
+      if (e.week_num === WEEK_NUM) {
         weekStatus[e.partner] = true
         weekStatus[e.partner + '_at'] = e.submitted_at
-      })
+      }
+      if (!byWeek[e.week_num]) byWeek[e.week_num] = {}
+      byWeek[e.week_num][e.partner] = e
+    }
+
+    // Partnerns uppskattning från senaste veckan där båda fyllt i
+    const other = state.partner === 'p1' ? 'p2' : 'p1'
+    const completeWeeks = Object.keys(byWeek).map(Number)
+      .filter(w => byWeek[w].p1 && byWeek[w].p2)
+      .sort((a, b) => a - b)
+    const lastComplete = completeWeeks[completeWeeks.length - 1]
+    if (lastComplete && byWeek[lastComplete][other].fb_appreciation) {
+      latestAppreciation = { week: lastComplete, text: byWeek[lastComplete][other].fb_appreciation }
     }
   } catch(e) {
     // Vid nätverksfel: visa appen ändå med okänd status
-    weekStatus = { p1: false, p2: false, p1_at: null, p2_at: null }
   }
 
   renderHome()
@@ -888,6 +891,14 @@ function renderHome() {
     <div class="prog-wrap"><div class="prog-fill" style="width:${pct}%"></div></div>
     <div class="prog-label">${(weekStatus.p1?1:0)+(weekStatus.p2?1:0)}/2 klara</div>
   </div>`
+
+  // Partnerns uppskattning från senaste kompletta veckan
+  if (latestAppreciation) {
+    h += `<div class="card" style="border-left:3px solid var(--accent);">
+      <div class="card-title">💛 Från ${otherName} — ${displayWeek(latestAppreciation.week)}</div>
+      <p style="font-size:15px;line-height:1.7;font-style:italic;">"${esc(latestAppreciation.text)}"</p>
+    </div>`
+  }
 
   // Åtgärdskort
   if (myDone) {
@@ -956,13 +967,8 @@ async function goForm() {
 // Hämtar det inskickade svaret och öppnar formuläret förifyllt för ändring
 window.editEntry = async function() {
   try {
-    const { data } = await supabase
-      .from('entries')
-      .select('scores, comments, reflection, fb_appreciation, fb_wish, fb_insight')
-      .eq('room_id', state.room_id)
-      .eq('partner', state.partner)
-      .eq('week_num', WEEK_NUM)
-      .single()
+    const { entries } = await api('entries')
+    const data = entries.find(e => e.partner === state.partner && e.week_num === WEEK_NUM)
     if (data) {
       answers = {
         scores: Object.fromEntries((data.scores || []).map((v, i) => [i, v])),
@@ -1089,29 +1095,18 @@ async function submitEntry() {
   const scores = Array.from({length: QUESTIONS.length}, (_, i) => answers.scores[i])
   const comments = Object.keys(answers.comments).length > 0 ? answers.comments : null
 
-  const payload = {
-    room_id: state.room_id,
-    partner: state.partner,
-    week_num: WEEK_NUM,
-    scores,
-    comments,
-    reflection: answers.reflection || null,
-    fb_appreciation: answers.appreciation || null,
-    fb_wish: answers.wish || null,
-    fb_insight: answers.insight || null
-  }
-
   try {
-    const { error } = await supabase
-      .from('entries')
-      .upsert(payload, { onConflict: 'room_id,partner,week_num' })
-
-    if (error) {
-      toast('Kunde inte spara — försök igen')
-      console.error(error)
-      if (btn) { btn.innerHTML = 'Spara mina svar ✓'; btn.disabled = false }
-      return
-    }
+    // Servern validerar, upsertar och rensar cachad analys
+    await api('submit_entry', {
+      partner: state.partner,
+      week_num: WEEK_NUM,
+      scores,
+      comments,
+      reflection: answers.reflection || null,
+      fb_appreciation: answers.appreciation || null,
+      fb_wish: answers.wish || null,
+      fb_insight: answers.insight || null
+    })
 
     // Uppdatera lokal status
     state.last_submit_at = new Date().toISOString()
@@ -1121,17 +1116,16 @@ async function submitEntry() {
     weekStatus[state.partner] = true
     weekStatus[state.partner + '_at'] = state.last_submit_at
 
-    // Ny/ändrad data — ogiltigförklara cachad AI-analys så en färsk genereras
+    // Ny/ändrad data — glöm session-cachad AI-analys
     analysisWeek = null
     chatHistory = []
-    supabase.from('rooms').update({ analysis_week: null }).eq('id', state.room_id).then(() => {})
 
     // Hämta om partnern också är klar
     let partnerDone = weekStatus[state.partner === 'p1' ? 'p2' : 'p1']
 
     showConfirm(partnerDone)
   } catch(e) {
-    toast('Nätverksfel — försök igen')
+    toast(e.name === 'TypeError' ? 'Nätverksfel — försök igen' : e.message)
     if (btn) { btn.innerHTML = 'Spara mina svar ✓'; btn.disabled = false }
   }
 }
@@ -1171,15 +1165,11 @@ async function goSettings() {
   showScreen('settings')
   setHeader('⚙️ Inställningar', '')
 
-  // Hämta parets kontext från Supabase
+  // Hämta parets kontext från servern
   let coupleContext = ''
   try {
-    const { data } = await supabase
-      .from('rooms')
-      .select('couple_context')
-      .eq('id', state.room_id)
-      .single()
-    coupleContext = data?.couple_context || ''
+    const { room } = await api('get_room')
+    coupleContext = room?.couple_context || ''
   } catch(e) {}
 
   renderSettings(coupleContext)
@@ -1250,12 +1240,8 @@ window.saveCoupleContext = async function() {
   if (btn) { btn.innerHTML = '<span class="spinner"></span>Sparar...'; btn.disabled = true }
 
   try {
-    const { error } = await supabase
-      .from('rooms')
-      .update({ couple_context: text || null, analysis_week: null })
-      .eq('id', state.room_id)
-
-    if (error) throw error
+    // Servern sparar kontexten och rensar cachad analys
+    await api('save_context', { couple_context: text })
 
     // Tvinga ny analys nästa gång analys-fliken öppnas
     analysisWeek = null
@@ -1349,10 +1335,7 @@ window.togglePush = async function() {
     const sub = await reg.pushManager.getSubscription()
     if (sub) {
       await sub.unsubscribe()
-      await supabase.from('push_subscriptions')
-        .delete()
-        .eq('room_id', state.room_id)
-        .eq('partner', state.partner)
+      try { await api('push_unsubscribe', { partner: state.partner }) } catch(e) {}
     }
     toast('Påminnelser avaktiverade')
     renderPushBtn('off')
@@ -1374,14 +1357,8 @@ window.togglePush = async function() {
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     })
 
-    // Spara prenumerationen i Supabase
-    const { error } = await supabase.from('push_subscriptions').upsert({
-      room_id: state.room_id,
-      partner: state.partner,
-      subscription: sub.toJSON()
-    }, { onConflict: 'room_id,partner' })
-
-    if (error) throw error
+    // Spara prenumerationen via servern
+    await api('push_subscribe', { partner: state.partner, subscription: sub.toJSON() })
     toast('Påminnelser aktiverade! Du får en notis varje söndag kl 10.')
     renderPushBtn('on')
   } catch (err) {
@@ -1415,7 +1392,7 @@ let chatHistory = []
 let analysisWeek = null   // vecka som nuvarande AI-analys gäller (null = ingen laddad)
 let analysChart = null
 
-async function goAnalys() {
+async function goAnalys(selectedWeek) {
   showScreen('analys')
   setHeader('📊 Analys', state.p1_name + ' & ' + state.p2_name)
 
@@ -1426,15 +1403,11 @@ async function goAnalys() {
     </div>
   `
 
-  // Hämta alla entries för radar + trenddiagram
+  // Hämta alla entries för radar + trenddiagram + historik
   let entries = []
   try {
-    const { data: allEntries } = await supabase
-      .from('entries')
-      .select('partner, scores, week_num')
-      .eq('room_id', state.room_id)
-      .order('week_num', { ascending: true })
-    entries = allEntries || []
+    const res = await api('entries')
+    entries = res.entries || []
   } catch(e) {}
 
   // Analysen visar senaste veckan där BÅDA fyllt i — inte bara innevarande.
@@ -1447,7 +1420,10 @@ async function goAnalys() {
   const completeWeeks = Object.keys(byWeek).map(Number)
     .filter(w => byWeek[w].p1 && byWeek[w].p2)
     .sort((a, b) => a - b)
-  const showWeek = completeWeeks[completeWeeks.length - 1]
+  const latestComplete = completeWeeks[completeWeeks.length - 1]
+  // Via veckoväljaren kan en tidigare komplett vecka visas
+  const showWeek = completeWeeks.includes(selectedWeek) ? selectedWeek : latestComplete
+  const isLatest = showWeek === latestComplete
 
   if (!showWeek) {
     document.getElementById('analysContent').innerHTML = `
@@ -1477,12 +1453,46 @@ async function goAnalys() {
   const trend1 = sortedWeeks.map(w => byWeek[w].p1 ? +avgOf(byWeek[w].p1).toFixed(2) : null)
   const trend2 = sortedWeeks.map(w => byWeek[w].p2 ? +avgOf(byWeek[w].p2).toFixed(2) : null)
 
-  // Notis om vi visar en tidigare vecka än den pågående
-  const oldWeekNote = showWeek !== WEEK_NUM
+  // Veckoväljare — visas när det finns fler än en komplett vecka
+  const weekChips = completeWeeks.length > 1 ? `
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+      ${completeWeeks.slice().reverse().map(w => `
+        <button onclick="goAnalys(${w})" style="padding:6px 12px;border-radius:16px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;
+          border:1.5px solid ${w === showWeek ? 'var(--primary)' : 'var(--border)'};
+          background:${w === showWeek ? 'var(--primary)' : 'white'};
+          color:${w === showWeek ? 'white' : 'var(--text-muted)'};">${displayWeek(w)}</button>
+      `).join('')}
+    </div>` : ''
+
+  // Notis om senaste kompletta veckan inte är den pågående
+  const oldWeekNote = isLatest && showWeek !== WEEK_NUM
     ? `<p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Visar senaste kompletta veckan (${displayWeek(showWeek)}). ${displayWeek(WEEK_NUM)} pågår fortfarande.</p>`
     : ''
 
+  // AI-råd och chatt visas bara för senaste kompletta veckan
+  const aiSection = isLatest ? `
+    <div class="card">
+      <div class="card-title">AI-råd</div>
+      <div id="analysText" class="analys-text">
+        <div class="analys-loading">
+          <div class="spinner" style="border-color:rgba(139,84,103,0.2);border-top-color:var(--primary);width:28px;height:28px;margin:0 auto 12px;display:block;"></div>
+          <p style="color:var(--text-muted);">Analyserar veckans data...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="chatCard" style="display:none;">
+      <div class="card-title">💬 Ställ en följdfråga</div>
+      <div id="chatMsgs"></div>
+      <div class="chat-send-row">
+        <input type="text" id="chatInput" placeholder="Fråga något om analysen..." autocomplete="off"
+          onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="chat-send-btn" onclick="sendChat()">→</button>
+      </div>
+    </div>` : ''
+
   document.getElementById('analysContent').innerHTML = `
+    ${weekChips}
     ${oldWeekNote}
     <div class="card">
       <div class="card-title">Radardiagram — ${displayWeek(showWeek)}</div>
@@ -1502,25 +1512,9 @@ async function goAnalys() {
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-title">AI-råd</div>
-      <div id="analysText" class="analys-text">
-        <div class="analys-loading">
-          <div class="spinner" style="border-color:rgba(139,84,103,0.2);border-top-color:var(--primary);width:28px;height:28px;margin:0 auto 12px;display:block;"></div>
-          <p style="color:var(--text-muted);">Analyserar veckans data...</p>
-        </div>
-      </div>
-    </div>
+    ${aiSection}
 
-    <div class="card" id="chatCard" style="display:none;">
-      <div class="card-title">💬 Ställ en följdfråga</div>
-      <div id="chatMsgs"></div>
-      <div class="chat-send-row">
-        <input type="text" id="chatInput" placeholder="Fråga något om analysen..." autocomplete="off"
-          onkeydown="if(event.key==='Enter')sendChat()">
-        <button class="chat-send-btn" onclick="sendChat()">→</button>
-      </div>
-    </div>
+    ${renderWeekDetails(showWeek, e1, e2)}
 
     <div style="height:20px;"></div>
   `
@@ -1612,37 +1606,85 @@ async function goAnalys() {
     }
   }
 
-  // Hämta AI-analys — Edge Function hanterar cachning server-side
-  if (analysisWeek !== showWeek) {
-    try {
-      const res = await fetch(EDGE_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ room_id: state.room_id, mode: 'analyze' })
-      })
-      const json = await res.json()
-      if (json.error) throw new Error(json.error)
+  // Hämta AI-analys (bara för senaste kompletta veckan) — servern cachar
+  if (isLatest) {
+    if (analysisWeek !== showWeek) {
+      try {
+        const res = await fetch(EDGE_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ code: state.room_code, mode: 'analyze' })
+        })
+        const json = await res.json()
+        if (json.error) throw new Error(json.error)
 
-      analysisWeek = showWeek
-      chatHistory = [{ role: 'assistant', content: json.content }]
-      document.getElementById('analysText').innerHTML = formatAnalysText(json.content)
+        analysisWeek = showWeek
+        chatHistory = [{ role: 'assistant', content: json.content }]
+        document.getElementById('analysText').innerHTML = formatAnalysText(json.content)
+        document.getElementById('chatCard').style.display = 'block'
+      } catch(err) {
+        document.getElementById('analysText').innerHTML = `
+          <p style="color:#dc2626;font-size:14px;">Kunde inte hämta analys: ${esc(err.message)}</p>
+          <button class="btn btn-secondary" style="margin-top:12px;" onclick="goAnalys()">Försök igen</button>
+        `
+      }
+    } else {
+      // Återanvänd session-cachad analys
+      document.getElementById('analysText').innerHTML = formatAnalysText(chatHistory[0]?.content || '')
       document.getElementById('chatCard').style.display = 'block'
-    } catch(err) {
-      document.getElementById('analysText').innerHTML = `
-        <p style="color:#dc2626;font-size:14px;">Kunde inte hämta analys: ${err.message}</p>
-        <button class="btn btn-secondary" style="margin-top:12px;" onclick="goAnalys()">Försök igen</button>
-      `
+      renderChatMsgs()
     }
-  } else {
-    // Återanvänd session-cachad analys
-    document.getElementById('analysText').innerHTML = formatAnalysText(chatHistory[0]?.content || '')
-    document.getElementById('chatCard').style.display = 'block'
-    renderChatMsgs()
   }
+}
+
+// ============================================================
+// VECKANS SVAR — detaljvy med poäng, kommentarer och feedback
+// ============================================================
+function renderWeekDetails(week, e1, e2) {
+  const rows = DIMS_SHORT.map((dim, i) => {
+    const s1 = e1.scores[i], s2 = e2.scores[i]
+    const gap = Math.abs(s1 - s2) >= 2
+    let r = `<div style="padding:9px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;">
+        <span>${dim}${gap ? ' ⚠️' : ''}</span>
+        <span style="font-weight:700;"><span style="color:var(--primary);">${s1}</span> / <span style="color:var(--accent);">${s2}</span></span>
+      </div>`
+    const c1 = e1.comments?.[String(i)]
+    const c2 = e2.comments?.[String(i)]
+    if (c1) r += `<div style="font-size:13px;color:var(--text-muted);font-style:italic;margin-top:3px;">${esc(state.p1_name)}: "${esc(c1)}"</div>`
+    if (c2) r += `<div style="font-size:13px;color:var(--text-muted);font-style:italic;margin-top:3px;">${esc(state.p2_name)}: "${esc(c2)}"</div>`
+    return r + '</div>'
+  }).join('')
+
+  // Reflektion och feedbacktexter per partner
+  const fbBlock = (entry, name) => {
+    const parts = []
+    if (entry.reflection) parts.push(['🧠 Reflektion', entry.reflection])
+    if (entry.fb_appreciation) parts.push(['💛 Uppskattning', entry.fb_appreciation])
+    if (entry.fb_wish) parts.push(['🌱 Önskan', entry.fb_wish])
+    if (entry.fb_insight) parts.push(['🔍 Insikt', entry.fb_insight])
+    if (!parts.length) return ''
+    return `<div style="margin-top:14px;">
+      <div style="font-weight:700;font-size:14px;margin-bottom:6px;">${esc(name)}</div>
+      ${parts.map(([label, text]) => `<div class="fb-block"><div class="fb-label">${label}</div><div style="font-size:14px;line-height:1.6;">${esc(text)}</div></div>`).join('')}
+    </div>`
+  }
+
+  return `<div class="card">
+    <div class="card-title">📖 Svaren — ${displayWeek(week)}</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">
+      <span style="color:var(--primary);font-weight:700;">${esc(state.p1_name)}</span> /
+      <span style="color:var(--accent);font-weight:700;">${esc(state.p2_name)}</span>
+      &nbsp;·&nbsp; ⚠️ = ni upplevde det olika
+    </div>
+    ${rows}
+    ${fbBlock(e1, state.p1_name)}
+    ${fbBlock(e2, state.p2_name)}
+  </div>`
 }
 
 function formatAnalysText(text) {
@@ -1683,7 +1725,7 @@ window.sendChat = async function() {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
       },
-      body: JSON.stringify({ room_id: state.room_id, mode: 'chat', messages: chatHistory })
+      body: JSON.stringify({ code: state.room_code, mode: 'chat', messages: chatHistory })
     })
     const json = await res.json()
     if (json.error) throw new Error(json.error)
