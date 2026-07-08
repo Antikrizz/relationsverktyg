@@ -1,0 +1,23 @@
+name: Keepalive Supabase
+
+# Supabase gratisplan pausar projekt efter ~1 veckas inaktivitet.
+# Appen används bara på söndagar, så vi pingar API:t var 3:e dag —
+# samma upplägg som i vår andra app.
+
+on:
+  schedule:
+    - cron: '0 12 */3 * *'  # Var 3:e dag kl 12 UTC
+  workflow_dispatch:         # Kan också köras manuellt från Actions-fliken
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          # Anon-nyckeln är publik per design (ligger redan i config.js).
+          # RLS gör att svaret blir tomt — men förfrågan räknas som aktivitet.
+          curl -s "https://uydnsxpxcgyuedcnzfyy.supabase.co/rest/v1/rooms?select=id&limit=1" \
+            -H "apikey: sb_publishable_i99YkdBlVCE9gx1wdP3gyA_9Gt2Bnza" \
+            > /dev/null
+          echo "Keepalive ping sent"
