@@ -1392,7 +1392,7 @@ let chatHistory = []
 let analysisWeek = null   // vecka som nuvarande AI-analys gäller (null = ingen laddad)
 let analysChart = null
 
-async function goAnalys(selectedWeek) {
+async function goAnalys(selectedWeek, forceRefresh) {
   showScreen('analys')
   setHeader('📊 Analys', state.p1_name + ' & ' + state.p2_name)
 
@@ -1479,6 +1479,8 @@ async function goAnalys(selectedWeek) {
           <p style="color:var(--text-muted);">Analyserar veckans data...</p>
         </div>
       </div>
+      <button class="btn btn-ghost" style="margin-top:14px;margin-bottom:0;font-size:14px;padding:10px;"
+        onclick="goAnalys(${showWeek}, true)">🔄 Skapa en ny analys</button>
     </div>
 
     <div class="card" id="chatCard" style="display:none;">
@@ -1608,7 +1610,7 @@ async function goAnalys(selectedWeek) {
 
   // Hämta AI-analys (bara för senaste kompletta veckan) — servern cachar
   if (isLatest) {
-    if (analysisWeek !== showWeek) {
+    if (analysisWeek !== showWeek || forceRefresh) {
       try {
         const res = await fetch(EDGE_URL, {
           method: 'POST',
@@ -1617,10 +1619,11 @@ async function goAnalys(selectedWeek) {
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           },
-          body: JSON.stringify({ code: state.room_code, mode: 'analyze' })
+          body: JSON.stringify({ code: state.room_code, mode: 'analyze', refresh: !!forceRefresh })
         })
         const json = await res.json()
         if (json.error) throw new Error(json.error)
+        if (!json.content) throw new Error('Analysen kom tillbaka tom')
 
         analysisWeek = showWeek
         chatHistory = [{ role: 'assistant', content: json.content }]

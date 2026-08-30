@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { room_id, code, mode, messages } = await req.json()
+    const { room_id, code, mode, messages, refresh } = await req.json()
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -113,13 +113,14 @@ Deno.serve(async (req) => {
       const result = await anthropicRes.json()
       if (!anthropicRes.ok) throw new Error(result.error?.message || 'Claude API-fel')
       return new Response(
-        JSON.stringify({ content: result.content[0].text }),
+        JSON.stringify({ content: extractText(result) }),
         { headers: { ...CORS, 'Content-Type': 'application/json' } }
       )
     }
 
     // Analysläge: returnera cachad analys om den finns för senaste veckan
-    if (latestBothWeek && room.analysis_week === latestBothWeek && room.analysis_text) {
+    // (refresh=true tvingar fram en ny analys, t.ex. om den cachade ser fel ut)
+    if (!refresh && latestBothWeek && room.analysis_week === latestBothWeek && room.analysis_text) {
       return new Response(
         JSON.stringify({ content: room.analysis_text, cached: true }),
         { headers: { ...CORS, 'Content-Type': 'application/json' } }
@@ -135,7 +136,7 @@ Deno.serve(async (req) => {
     const result = await anthropicRes.json()
     if (!anthropicRes.ok) throw new Error(result.error?.message || 'Claude API-fel')
 
-    const analysisText = result.content[0].text
+    const analysisText = extractText(result)
 
     // Spara till databasen så partnern får samma svar
     if (latestBothWeek) {
@@ -169,8 +170,37 @@ function callClaude(apiKey: string, body: { system: string; messages: any[] }) {
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 2000, ...body }),
+    body: JSON.stringify({
+      model: 'claude-sonnet-5',
+      // OBS: Sonnet 5 tänker som standard (till skillnad från Sonnet 4.6).
+      // max_tokens täcker tänkande + svarstext tillsammans — därför rejält tilltaget,
+      // annars äter tänkandet upp hela budgeten och svaret blir tomt/avhugget.
+      max_tokens: 8000,
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'medium' },
+      ...body,
+    }),
   })
+}
+
+// Plockar ut svarstexten ur Claudes svar.
+// Svaret innehåller flera block (tänkande först, sedan text) — vi kan alltså
+// inte läsa content[0] rakt av, utan måste leta upp text-blocken.
+function extractText(result: any): string {
+  const text = (result.content || [])
+    .filter((b: any) => b.type === 'text')
+    .map((b: any) => b.text)
+    .join('')
+    .trim()
+
+  if (!text) {
+    throw new Error(
+      result.stop_reason === 'max_tokens'
+        ? 'Analysen blev för lång och hanns inte skrivas klart — försök igen'
+        : 'Claude returnerade inget svar'
+    )
+  }
+  return text
 }
 
 function buildContext(room: any, entries: any[]) {
